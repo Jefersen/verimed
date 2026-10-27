@@ -20,9 +20,9 @@
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: React 19, TypeScript, Tailwind CSS, Motion (Framer Motion), Lucide Icons
-- **Backend**: Express.js, TypeScript, Node.js Crypto (AES-256-GCM, SHA-256)
-- **Tooling**: Vite, tsx
+- **Frontend**: React 19 (JSX), Tailwind CSS, Motion, Lucide Icons
+- **Backend**: Node.js, Express.js (ES Modules), Crypto (AES-256-GCM, SHA-256)
+- **Tooling**: Vite
 
 ---
 
@@ -63,9 +63,8 @@
 ## 📜 Skrip yang Tersedia
 
 - `npm run dev`: Menjalankan server Express dan Vite SPA development server.
-- `npm run build`: Membangun bundle produksi.
-- `npm run lint`: Memeriksa tipe data dengan TypeScript (`tsc --noEmit`).
-- `npm test`: Menjalankan suite pengujian unit kriptografi dan aturan klaim.
+- `npm run build`: Membangun bundle produksi JavaScript.
+- `npm test`: Menjalankan suite pengujian unit kriptografi dan aturan klaim secara native dengan Node.js.
 
 ---
 

@@ -1,63 +1,42 @@
-import React, { useState } from 'react';
-import { Claim, User } from '../types';
+import { useState } from "react";
 import {
   MessageSquare,
-  AlertTriangle,
   Send,
-  FileCheck2,
-  Building2,
-  Calendar,
   CheckCircle2,
-  ArrowRight,
-  ShieldCheck,
-  History,
-} from 'lucide-react';
-
-interface KlarifikasiFaskesViewProps {
-  claims: Claim[];
-  currentUser: User;
-  onSelectClaim: (claim: Claim) => void;
-  onSubmitClarification?: (claimId: string, answerText: string, updatedItems?: any) => void;
-  onSubmitRevision?: (claimId: string, revisionNote: string, updatedDiagnosis?: string, additionalNotes?: string) => void;
-}
-
-export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
+  ShieldCheck
+} from "lucide-react";
+const KlarifikasiFaskesView = ({
   claims,
   currentUser,
   onSelectClaim,
   onSubmitClarification,
-  onSubmitRevision,
+  onSubmitRevision
 }) => {
-  // Only filter claims belonging to this Faskes that need clarification
   const clarificationClaims = claims.filter(
-    (c) => c.facilityId === currentUser.facilityId && c.status === 'klarifikasi'
+    (c) => c.facilityId === currentUser.facilityId && c.status === "klarifikasi"
   );
-
-  const [activeClaimId, setActiveClaimId] = useState<string | null>(
+  const [activeClaimId, setActiveClaimId] = useState(
     clarificationClaims[0]?.id || null
   );
-  const [responseAnswer, setResponseAnswer] = useState('');
+  const [responseAnswer, setResponseAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const activeClaim = claims.find((c) => c.id === activeClaimId);
-
-  const handleSubmitResponse = (e: React.FormEvent) => {
+  const handleSubmitResponse = (e) => {
     e.preventDefault();
     if (!activeClaim || !responseAnswer.trim()) return;
-
     setIsSubmitting(true);
     if (onSubmitRevision) {
       onSubmitRevision(activeClaim.id, responseAnswer);
     } else if (onSubmitClarification) {
       onSubmitClarification(activeClaim.id, responseAnswer);
     }
-    setResponseAnswer('');
+    setResponseAnswer("");
     setIsSubmitting(false);
   };
-
-  return (
-    <div className="space-y-6">
-      {/* Header */}
+  return <div className="space-y-6">
+      {
+    /* Header */
+  }
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center">
@@ -74,8 +53,7 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
         </div>
       </div>
 
-      {clarificationClaims.length === 0 ? (
-        <div className="p-12 text-center bg-white rounded-2xl border border-slate-100 shadow-xs space-y-3">
+      {clarificationClaims.length === 0 ? <div className="p-12 text-center bg-white rounded-2xl border border-slate-100 shadow-xs space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
             <CheckCircle2 className="w-6 h-6" />
           </div>
@@ -85,29 +63,24 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             Semua klaim yang diajukan {currentUser.facilityName} tidak sedang menunggu konfirmasi lanjutan. Semua berkas berjalan lancar di antrean verifikator.
           </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: List of Claims needing clarification */}
+        </div> : <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {
+    /* Left: List of Claims needing clarification */
+  }
           <div className="space-y-3">
             <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider px-1">
               Klaim Butuh Tanggapan ({clarificationClaims.length})
             </h2>
 
             <div className="space-y-2.5">
-              {clarificationClaims.map((claim) => (
-                <div
-                  key={claim.id}
-                  onClick={() => {
-                    setActiveClaimId(claim.id);
-                    setResponseAnswer('');
-                  }}
-                  className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${
-                    activeClaimId === claim.id
-                      ? 'bg-amber-50/70 border-amber-300 ring-1 ring-amber-400 shadow-xs'
-                      : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
+              {clarificationClaims.map((claim) => <div
+    key={claim.id}
+    onClick={() => {
+      setActiveClaimId(claim.id);
+      setResponseAnswer("");
+    }}
+    className={`p-4 rounded-xl border text-left cursor-pointer transition-all ${activeClaimId === claim.id ? "bg-amber-50/70 border-amber-300 ring-1 ring-amber-400 shadow-xs" : "bg-white border-slate-200 hover:border-slate-300"}`}
+  >
                   <div className="flex items-center justify-between text-xs mb-1">
                     <span className="font-mono font-bold text-slate-900">
                       #{claim.claimNumber}
@@ -121,24 +94,26 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
                     {claim.primaryDiagnosis.name}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Paket: {claim.inacbgCode} • Rp {claim.billedAmount.toLocaleString('id-ID')}
+                    Paket: {claim.inacbgCode} • Rp {claim.billedAmount.toLocaleString("id-ID")}
                   </p>
 
                   <div className="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
                     <span className="text-amber-800 font-medium">Permintaan verifikator</span>
                     <span className="text-slate-400">
-                      {new Date(claim.updatedAt).toLocaleDateString('id-ID')}
+                      {new Date(claim.updatedAt).toLocaleDateString("id-ID")}
                     </span>
                   </div>
-                </div>
-              ))}
+                </div>)}
             </div>
           </div>
 
-          {/* Right: Response / Clarification Workspace */}
-          {activeClaim && (
-            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-xs p-5 sm:p-6 space-y-5">
-              {/* Active claim header */}
+          {
+    /* Right: Response / Clarification Workspace */
+  }
+          {activeClaim && <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-xs p-5 sm:p-6 space-y-5">
+              {
+    /* Active claim header */
+  }
               <div className="flex items-start justify-between border-b border-slate-100 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -159,14 +134,16 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
                 </div>
 
                 <button
-                  onClick={() => onSelectClaim(activeClaim)}
-                  className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200"
-                >
+    onClick={() => onSelectClaim(activeClaim)}
+    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200"
+  >
                   Buka Rincian Berkas
                 </button>
               </div>
 
-              {/* Admin Clarification Request Note */}
+              {
+    /* Admin Clarification Request Note */
+  }
               <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200 text-xs text-amber-950 space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="font-bold flex items-center gap-1.5 text-amber-900">
@@ -174,17 +151,18 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
                     Permintaan dari Verifikator BPJS / Admin:
                   </span>
                   <span className="text-[10px] text-amber-700 font-mono">
-                    {new Date(activeClaim.updatedAt).toLocaleDateString('id-ID')} WIB
+                    {new Date(activeClaim.updatedAt).toLocaleDateString("id-ID")} WIB
                   </span>
                 </div>
 
                 <div className="bg-white p-3 rounded-lg border border-amber-200/80 font-sans text-slate-800 text-xs leading-relaxed">
-                  {activeClaim.clarifications?.[0]?.question ||
-                    'Mohon konfirmasi kesesuaian tindakan dan rincian item tagihan terhadap ketentuan paket INA-CBG.'}
+                  {activeClaim.clarifications?.[0]?.question || "Mohon konfirmasi kesesuaian tindakan dan rincian item tagihan terhadap ketentuan paket INA-CBG."}
                 </div>
               </div>
 
-              {/* Response Form */}
+              {
+    /* Response Form */
+  }
               <form onSubmit={handleSubmitResponse} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -194,13 +172,13 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
                     Berikan penjelasan tertulis. Tanggapan ini akan dicatat dan diterbitkan sebagai <strong>Versi {activeClaim.currentVersion + 1}</strong> bersegel baru tanpa menimpa versi sebelumnya.
                   </p>
                   <textarea
-                    rows={4}
-                    value={responseAnswer}
-                    onChange={(e) => setResponseAnswer(e.target.value)}
-                    required
-                    placeholder="Contoh: Kami telah meninjau kembali rincian tindakan. Kasa hemostatik digunakan atas indikasi perdarahan fokal intra-operasi. Terlampir penjelasan tambahan pada resume..."
-                    className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-                  />
+    rows={4}
+    value={responseAnswer}
+    onChange={(e) => setResponseAnswer(e.target.value)}
+    required
+    placeholder="Contoh: Kami telah meninjau kembali rincian tindakan. Kasa hemostatik digunakan atas indikasi perdarahan fokal intra-operasi. Terlampir penjelasan tambahan pada resume..."
+    className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+  />
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
@@ -220,19 +198,19 @@ export const KlarifikasiFaskesView: React.FC<KlarifikasiFaskesViewProps> = ({
 
                 <div className="flex justify-end pt-2">
                   <button
-                    type="submit"
-                    disabled={isSubmitting || !responseAnswer.trim()}
-                    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs shadow-emerald-200 transition-all flex items-center gap-2"
-                  >
+    type="submit"
+    disabled={isSubmitting || !responseAnswer.trim()}
+    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold text-xs shadow-xs shadow-emerald-200 transition-all flex items-center gap-2"
+  >
                     <Send className="w-4 h-4" />
                     <span>Kirim Tanggapan & Buat Revisi V{activeClaim.currentVersion + 1}</span>
                   </button>
                 </div>
               </form>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
+            </div>}
+        </div>}
+    </div>;
+};
+export {
+  KlarifikasiFaskesView
 };

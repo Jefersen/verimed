@@ -1,26 +1,18 @@
-import React from 'react';
-import { NATIONAL_INSIGHTS } from '../data/mockData';
+import { NATIONAL_INSIGHTS } from "../data/mockData";
 import {
   Sparkles,
-  BarChart3,
-  TrendingUp,
   ShieldCheck,
-  CheckCircle2,
-  AlertTriangle,
   Info,
   Layers,
   Zap,
-  Activity,
-  FileCheck,
-  Lock,
-} from 'lucide-react';
-
-export const NationalInsightsView: React.FC = () => {
+  Activity
+} from "lucide-react";
+const NationalInsightsView = () => {
   const { metadata, summary, signals, mlEvaluation, scaleTest } = NATIONAL_INSIGHTS;
-
-  return (
-    <div className="space-y-6">
-      {/* Hero Banner */}
+  return <div className="space-y-6">
+      {
+    /* Hero Banner */
+  }
       <div className="bg-gradient-to-r from-emerald-700 via-teal-700 to-emerald-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg shadow-emerald-200/50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
@@ -54,18 +46,24 @@ export const NationalInsightsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Mandatory PRD Disclaimer Banner */}
+      {
+    /* Mandatory PRD Disclaimer Banner */
+  }
       <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
         <Info className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
         <div>
-          <span className="font-bold">Batasan Etis & Regulasi Panitia (PRD Bab 14 & 20.7):</span>{' '}
+          <span className="font-bold">Batasan Etis & Regulasi Panitia (PRD Bab 14 & 20.7):</span>{" "}
           {metadata.legalNotice}
         </div>
       </div>
 
-      {/* Primary Aggregate Statistics */}
+      {
+    /* Primary Aggregate Statistics */
+  }
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {/* Card 1: Inpatient vs Outpatient */}
+        {
+    /* Card 1: Inpatient vs Outpatient */
+  }
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
@@ -78,14 +76,14 @@ export const NationalInsightsView: React.FC = () => {
                 <div className="flex justify-between text-xs font-bold mb-1">
                   <span className="text-slate-700">Rawat Jalan (RJTL)</span>
                   <span className="text-emerald-700">
-                    {summary.outpatientVisits.toLocaleString('id-ID')} ({summary.outpatientPercent}%)
+                    {summary.outpatientVisits.toLocaleString("id-ID")} ({summary.outpatientPercent}%)
                   </span>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-emerald-500 rounded-full"
-                    style={{ width: `${summary.outpatientPercent}%` }}
-                  />
+    className="h-full bg-emerald-500 rounded-full"
+    style={{ width: `${summary.outpatientPercent}%` }}
+  />
                 </div>
               </div>
 
@@ -93,14 +91,14 @@ export const NationalInsightsView: React.FC = () => {
                 <div className="flex justify-between text-xs font-bold mb-1">
                   <span className="text-slate-700">Rawat Inap (RITL)</span>
                   <span className="text-teal-700">
-                    {summary.inpatientVisits.toLocaleString('id-ID')} ({summary.inpatientPercent}%)
+                    {summary.inpatientVisits.toLocaleString("id-ID")} ({summary.inpatientPercent}%)
                   </span>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-teal-600 rounded-full"
-                    style={{ width: `${summary.inpatientPercent}%` }}
-                  />
+    className="h-full bg-teal-600 rounded-full"
+    style={{ width: `${summary.inpatientPercent}%` }}
+  />
                 </div>
               </div>
             </div>
@@ -111,7 +109,9 @@ export const NationalInsightsView: React.FC = () => {
           </p>
         </div>
 
-        {/* Card 2: Severity Level Distribution */}
+        {
+    /* Card 2: Severity Level Distribution */
+  }
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs md:col-span-2">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 mb-2">
             <span>Distribusi Tingkat Keparahan (Severity Level 1 - 4)</span>
@@ -119,8 +119,7 @@ export const NationalInsightsView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4">
-            {summary.severityDistribution.map((sev) => (
-              <div key={sev.level} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
+            {summary.severityDistribution.map((sev) => <div key={sev.level} className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
                 <span className="text-[11px] font-bold text-slate-700 block truncate">
                   {sev.level}
                 </span>
@@ -128,10 +127,9 @@ export const NationalInsightsView: React.FC = () => {
                   {sev.percent}%
                 </p>
                 <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                  {sev.count.toLocaleString('id-ID')} kunjungan
+                  {sev.count.toLocaleString("id-ID")} kunjungan
                 </p>
-              </div>
-            ))}
+              </div>)}
           </div>
 
           <p className="text-[11px] text-slate-500 mt-3 italic">
@@ -140,7 +138,9 @@ export const NationalInsightsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Top 5 Sinyal Pola Nasional (PRD Section 20.3) */}
+      {
+    /* Top 5 Sinyal Pola Nasional (PRD Section 20.3) */
+  }
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
@@ -157,8 +157,7 @@ export const NationalInsightsView: React.FC = () => {
         </div>
 
         <div className="divide-y divide-slate-100">
-          {signals.map((sig, index) => (
-            <div key={sig.id} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
+          {signals.map((sig, index) => <div key={sig.id} className="p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 transition-colors">
               <div className="flex items-start gap-3.5">
                 <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold shrink-0 font-mono">
                   #{index + 1}
@@ -181,7 +180,7 @@ export const NationalInsightsView: React.FC = () => {
               <div className="flex items-center justify-between md:justify-end gap-6 shrink-0 md:text-right pl-10 md:pl-0">
                 <div>
                   <p className="text-base font-black text-slate-900 font-mono">
-                    {sig.count.toLocaleString('id-ID')}
+                    {sig.count.toLocaleString("id-ID")}
                   </p>
                   <p className="text-[11px] font-semibold text-emerald-700">
                     {sig.percent}% dari populasi
@@ -191,12 +190,13 @@ export const NationalInsightsView: React.FC = () => {
                   {sig.status}
                 </span>
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
 
-      {/* ML Model Performance & Evaluation (PRD 20.4 & 20.5) */}
+      {
+    /* ML Model Performance & Evaluation (PRD 20.4 & 20.5) */
+  }
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-100">
           <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1">
@@ -224,8 +224,7 @@ export const NationalInsightsView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {mlEvaluation.models.map((m, idx) => (
-                <tr key={m.modelName} className={idx === 1 ? 'bg-emerald-50/30' : 'hover:bg-slate-50'}>
+              {mlEvaluation.models.map((m, idx) => <tr key={m.modelName} className={idx === 1 ? "bg-emerald-50/30" : "hover:bg-slate-50"}>
                   <td className="py-3.5 px-4 font-semibold text-slate-900">
                     <span className="block">{m.modelName}</span>
                     <span className="text-[10px] text-slate-400 font-normal">{m.type}</span>
@@ -243,14 +242,15 @@ export const NationalInsightsView: React.FC = () => {
                   <td className="py-3.5 px-4 text-center font-mono text-slate-800">
                     {m.precisionAt1000}
                   </td>
-                </tr>
-              ))}
+                </tr>)}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Cryptographic Sealing Scale Test Benchmark (PRD 2. & 20.6) */}
+      {
+    /* Cryptographic Sealing Scale Test Benchmark (PRD 2. & 20.6) */
+  }
       <div className="bg-gradient-to-br from-white to-emerald-50/50 p-6 rounded-2xl border border-emerald-200/80 shadow-xs space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -269,8 +269,7 @@ export const NationalInsightsView: React.FC = () => {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          {scaleTest.benchmarks.map((bench) => (
-            <div key={bench.volume} className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2 text-xs">
+          {scaleTest.benchmarks.map((bench) => <div key={bench.volume} className="p-4 rounded-xl bg-white border border-slate-200 shadow-xs space-y-2 text-xs">
               <span className="font-bold text-slate-900 text-sm block">
                 {bench.volume}
               </span>
@@ -290,10 +289,11 @@ export const NationalInsightsView: React.FC = () => {
                 <span>Deteksi Perubahan (Tamper Rate):</span>
                 <strong className="font-mono text-emerald-700 font-bold">{bench.tamperDetectionRate}</strong>
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
-    </div>
-  );
+    </div>;
+};
+export {
+  NationalInsightsView
 };

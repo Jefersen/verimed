@@ -1,5 +1,3 @@
-import React from 'react';
-import { Claim, User, LabResult } from '../types';
 import {
   FileText,
   Clock,
@@ -10,52 +8,35 @@ import {
   FlaskConical,
   ArrowRight,
   Building2,
-  Calendar,
-  MessageSquare,
-  AlertTriangle,
-} from 'lucide-react';
-import { motion } from 'motion/react';
-
-interface DashboardFaskesViewProps {
-  claims: Claim[];
-  currentUser: User;
-  onOpenNewClaimModal: () => void;
-  onSelectClaim: (claim: Claim) => void;
-  onGoToKlarifikasi?: () => void;
-  onGoToClarifications?: () => void;
-  onGoToLab?: () => void;
-  onGoToKlaimSaya?: () => void;
-}
-
-export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
+  MessageSquare
+} from "lucide-react";
+const DashboardFaskesView = ({
   claims,
   currentUser,
   onOpenNewClaimModal,
   onSelectClaim,
   onGoToKlarifikasi,
   onGoToClarifications,
-  onGoToLab = () => {},
-  onGoToKlaimSaya = () => {},
+  onGoToLab = () => {
+  },
+  onGoToKlaimSaya = () => {
+  }
 }) => {
-  const handleClarification = onGoToClarifications || onGoToKlarifikasi || (() => {});
-  // STRICT FILTER: Faskes only sees their own claims!
+  const handleClarification = onGoToClarifications || onGoToKlarifikasi || (() => {
+  });
   const myClaims = claims.filter((c) => c.facilityId === currentUser.facilityId);
-
   const totalSubmitted = myClaims.length;
   const inProcessClaims = myClaims.filter(
-    (c) => c.status === 'menunggu_verifikasi' || c.status === 'ditelaah'
+    (c) => c.status === "menunggu_verifikasi" || c.status === "ditelaah"
   );
-  const clarificationClaims = myClaims.filter((c) => c.status === 'klarifikasi');
-  const approvedClaims = myClaims.filter((c) => c.status === 'disetujui');
-
+  const clarificationClaims = myClaims.filter((c) => c.status === "klarifikasi");
+  const approvedClaims = myClaims.filter((c) => c.status === "disetujui");
   const totalBilled = myClaims.reduce((acc, c) => acc + c.billedAmount, 0);
-
-  // Recent claims submitted by this hospital
   const recentClaims = [...myClaims].slice(0, 5);
-
-  return (
-    <div className="space-y-6">
-      {/* Welcome Banner for Faskes */}
+  return <div className="space-y-6">
+      {
+    /* Welcome Banner for Faskes */
+  }
       <div className="bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 rounded-2xl p-6 sm:p-7 text-white shadow-lg shadow-emerald-200/50 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-emerald-50 text-xs font-medium mb-3">
@@ -72,26 +53,27 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
 
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <button
-            onClick={onOpenNewClaimModal}
-            className="px-4 py-2.5 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-xs shadow-md transition-all flex items-center gap-2 group"
-          >
+    onClick={onOpenNewClaimModal}
+    className="px-4 py-2.5 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 font-bold text-xs shadow-md transition-all flex items-center gap-2 group"
+  >
             <PlusCircle className="w-4 h-4 text-emerald-600 group-hover:rotate-90 transition-transform" />
             <span>Ajukan Klaim Baru</span>
           </button>
 
           <button
-            onClick={onGoToLab}
-            className="px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-semibold text-xs border border-white/30 transition-all flex items-center gap-2"
-          >
+    onClick={onGoToLab}
+    className="px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-md text-white font-semibold text-xs border border-white/30 transition-all flex items-center gap-2"
+  >
             <FlaskConical className="w-4 h-4" />
             <span>Kirim Hasil Lab LIS</span>
           </button>
         </div>
       </div>
 
-      {/* Urgent Clarification Action Banner */}
-      {clarificationClaims.length > 0 && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {
+    /* Urgent Clarification Action Banner */
+  }
+      {clarificationClaims.length > 0 && <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
               <MessageSquare className="w-5 h-5" />
@@ -112,18 +94,21 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
           </div>
 
           <button
-            onClick={handleClarification}
-            className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs self-start sm:self-auto"
-          >
+    onClick={handleClarification}
+    className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs self-start sm:self-auto"
+  >
             <span>Buka Daftar Klarifikasi</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
-        </div>
-      )}
+        </div>}
 
-      {/* Faskes Operational Metrics */}
+      {
+    /* Faskes Operational Metrics */
+  }
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Total Submitted */}
+        {
+    /* Metric 1: Total Submitted */
+  }
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -135,11 +120,13 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2">{totalSubmitted}</p>
           <p className="text-[11px] text-slate-500 mt-1">
-            Nilai Billed: <strong className="text-slate-800">Rp {totalBilled.toLocaleString('id-ID')}</strong>
+            Nilai Billed: <strong className="text-slate-800">Rp {totalBilled.toLocaleString("id-ID")}</strong>
           </p>
         </div>
 
-        {/* Metric 2: In Process */}
+        {
+    /* Metric 2: In Process */
+  }
         <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -155,7 +142,9 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
           </p>
         </div>
 
-        {/* Metric 3: Clarification Needed */}
+        {
+    /* Metric 3: Clarification Needed */
+  }
         <div className="bg-white p-5 rounded-2xl border border-amber-100 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -167,11 +156,13 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
           </div>
           <p className="text-2xl font-black text-amber-600 mt-2">{clarificationClaims.length}</p>
           <p className="text-[11px] text-amber-700 font-medium mt-1">
-            {clarificationClaims.length > 0 ? 'Menunggu tanggapan faskes' : 'Semua klaim tertangani'}
+            {clarificationClaims.length > 0 ? "Menunggu tanggapan faskes" : "Semua klaim tertangani"}
           </p>
         </div>
 
-        {/* Metric 4: Approved */}
+        {
+    /* Metric 4: Approved */
+  }
         <div className="bg-white p-5 rounded-2xl border border-emerald-100 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
@@ -188,7 +179,9 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
         </div>
       </div>
 
-      {/* Recent Submissions by this Hospital */}
+      {
+    /* Recent Submissions by this Hospital */
+  }
       <div className="bg-white rounded-2xl border border-slate-100 shadow-xs overflow-hidden">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between">
           <div>
@@ -201,21 +194,20 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
           </div>
 
           <button
-            onClick={onGoToKlaimSaya}
-            className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
-          >
+    onClick={onGoToKlaimSaya}
+    className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+  >
             <span>Lihat Semua Klaim Saya</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         <div className="divide-y divide-slate-100">
-          {recentClaims.map((claim) => (
-            <div
-              key={claim.id}
-              onClick={() => onSelectClaim(claim)}
-              className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-            >
+          {recentClaims.map((claim) => <div
+    key={claim.id}
+    onClick={() => onSelectClaim(claim)}
+    className="p-4 sm:p-5 hover:bg-slate-50/70 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+  >
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
                   V{claim.currentVersion}
@@ -237,14 +229,14 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
                   </div>
 
                   <p className="text-xs font-bold text-slate-800 mt-1">
-                    {claim.primaryDiagnosis.name}{' '}
+                    {claim.primaryDiagnosis.name}{" "}
                     <span className="text-slate-500 font-normal">
                       ({claim.inacbgCode} • Severity {claim.severity})
                     </span>
                   </p>
 
                   <p className="text-[11px] text-slate-500 mt-0.5">
-                    Lama Rawat: {claim.losDays} Hari • Diajukan: {new Date(claim.createdAt).toLocaleDateString('id-ID')}
+                    Lama Rawat: {claim.losDays} Hari • Diajukan: {new Date(claim.createdAt).toLocaleDateString("id-ID")}
                   </p>
                 </div>
               </div>
@@ -252,20 +244,12 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
               <div className="flex items-center justify-between sm:justify-end gap-5 shrink-0 sm:text-right">
                 <div>
                   <p className="text-xs font-bold text-slate-900">
-                    Rp {claim.billedAmount.toLocaleString('id-ID')}
+                    Rp {claim.billedAmount.toLocaleString("id-ID")}
                   </p>
                   <span
-                    className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md mt-0.5 ${
-                      claim.status === 'disetujui'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : claim.status === 'ditelaah'
-                        ? 'bg-amber-100 text-amber-800'
-                        : claim.status === 'klarifikasi'
-                        ? 'bg-blue-100 text-blue-800'
-                        : 'bg-slate-100 text-slate-700'
-                    }`}
-                  >
-                    {claim.status.replace('_', ' ')}
+    className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md mt-0.5 ${claim.status === "disetujui" ? "bg-emerald-100 text-emerald-800" : claim.status === "ditelaah" ? "bg-amber-100 text-amber-800" : claim.status === "klarifikasi" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}
+  >
+                    {claim.status.replace("_", " ")}
                   </span>
                 </div>
 
@@ -273,10 +257,11 @@ export const DashboardFaskesView: React.FC<DashboardFaskesViewProps> = ({
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </div>
-            </div>
-          ))}
+            </div>)}
         </div>
       </div>
-    </div>
-  );
+    </div>;
+};
+export {
+  DashboardFaskesView
 };

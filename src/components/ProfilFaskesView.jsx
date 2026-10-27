@@ -1,15 +1,6 @@
-import React from 'react';
-import { User } from '../types';
-import { Building2, ShieldCheck, Key, Mail, Award, CheckCircle2 } from 'lucide-react';
-
-interface ProfilFaskesViewProps {
-  currentUser: User;
-  claimsCount?: number;
-}
-
-export const ProfilFaskesView: React.FC<ProfilFaskesViewProps> = ({ currentUser, claimsCount = 0 }) => {
-  return (
-    <div className="space-y-6 max-w-4xl">
+import { ShieldCheck, Key, Mail, CheckCircle2 } from "lucide-react";
+const ProfilFaskesView = ({ currentUser, claimsCount = 0 }) => {
+  return <div className="space-y-6 max-w-4xl">
       <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold">
@@ -72,6 +63,8 @@ export const ProfilFaskesView: React.FC<ProfilFaskesViewProps> = ({ currentUser,
           </p>
         </div>
       </div>
-    </div>
-  );
+    </div>;
+};
+export {
+  ProfilFaskesView
 };
