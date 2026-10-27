@@ -23,9 +23,18 @@ const COMMON_TESTS = [
 const LabVaultView = ({
   labResults,
   currentUser,
-  onAddLabResult
+  onAddLabResult,
+  isOpenSimulator,
+  onOpenSimulatorChange
 }) => {
-  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+  const [internalSimulatorOpen, setInternalSimulatorOpen] = useState(false);
+  const isSimulatorOpen = isOpenSimulator !== void 0 ? isOpenSimulator : internalSimulatorOpen;
+  const setIsSimulatorOpen = (val) => {
+    if (onOpenSimulatorChange) {
+      onOpenSimulatorChange(val);
+    }
+    setInternalSimulatorOpen(val);
+  };
   const [selectedTest, setSelectedTest] = useState(COMMON_TESTS[0].name);
   const [testValue, setTestValue] = useState(COMMON_TESTS[0].defaultVal);
   const [patientPseudoId, setPatientPseudoId] = useState("PASIEN-5566");

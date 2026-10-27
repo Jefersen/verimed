@@ -38,6 +38,7 @@ function App() {
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [isNewClaimModalOpen, setIsNewClaimModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isLabSimulatorOpen, setIsLabSimulatorOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const showToast = (text, type = "success") => {
     setToastMessage({ text, type });
@@ -378,6 +379,11 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     onOpenNewClaimModal={() => setIsNewClaimModalOpen(true)}
     onSelectClaim={(c) => setSelectedClaim(c)}
     onGoToClarifications={() => setActiveTab("klarifikasi")}
+    onGoToLab={() => {
+      setIsLabSimulatorOpen(true);
+      setActiveTab("lab-vault");
+    }}
+    onGoToKlaimSaya={() => setActiveTab("claims")}
   />}
               </motion.div>}
 
@@ -414,6 +420,8 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     labResults={labResults}
     currentUser={currentUser}
     onAddLabResult={handleAddLabResult}
+    isOpenSimulator={isLabSimulatorOpen}
+    onOpenSimulatorChange={setIsLabSimulatorOpen}
   />
               </motion.div>}
 
