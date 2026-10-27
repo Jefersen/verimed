@@ -1,0 +1,6 @@
+{
+  "name": "VeriMed",
+  "description": "Platform Verifikasi dan Penyegelan Klaim Pelayanan Kesehatan dengan Integritas Kriptografis dan Analisis Pola Nasional",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
