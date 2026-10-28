@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "motion/react";
 import {
   FlaskConical,
@@ -125,8 +126,9 @@ const LabVaultView = ({
       </div>
 
       {
-    /* Simulator Modal Drawer */
+    /* Simulator Modal Drawer (Portal to document.body) */
   }
+      {typeof document !== "undefined" && createPortal(
       <AnimatePresence>
         {isSimulatorOpen && <motion.div
     initial={{ opacity: 0 }}
@@ -307,7 +309,9 @@ const LabVaultView = ({
               </form>
             </motion.div>
           </motion.div>}
-      </AnimatePresence>
+      </AnimatePresence>,
+      document.body
+      )}
 
       {
     /* Lab Results Table */

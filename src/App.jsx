@@ -294,24 +294,25 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
   ).length;
   const lastSealHash = seals[seals.length - 1]?.sealHash || "0".repeat(64);
   const isAdmin = currentUser.role === "admin";
-  return <div className="min-h-screen bg-slate-50/70 text-slate-800 flex flex-col antialiased selection:bg-emerald-100 selection:text-emerald-900">
+  return <div className="h-screen max-h-screen overflow-hidden bg-[#0E947A] text-slate-800 flex flex-col min-[1100px]:flex-row antialiased selection:bg-emerald-100 selection:text-emerald-900">
       {
     /* Toast Notification */
   }
       <AnimatePresence>
         {toastMessage && <motion.div
-    initial={{ opacity: 0, y: -20 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    className={`fixed top-4 right-4 z-50 p-4 rounded-xl shadow-lg border text-xs font-semibold flex items-center gap-2.5 max-w-md ${toastMessage.type === "error" ? "bg-rose-50 border-rose-300 text-rose-800" : toastMessage.type === "warning" ? "bg-amber-50 border-amber-300 text-amber-800" : "bg-emerald-50 border-emerald-300 text-emerald-800"}`}
+    initial={{ opacity: 0, y: -24, scale: 0.96 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -16, scale: 0.96 }}
+    transition={{ type: "spring", stiffness: 360, damping: 28 }}
+    className={`fixed top-5 right-6 z-50 px-4 py-3.5 rounded-2xl shadow-xl border text-xs font-semibold flex items-center gap-2.5 max-w-md backdrop-blur-md ${toastMessage.type === "error" ? "bg-rose-50/95 border-rose-300 text-rose-800" : toastMessage.type === "warning" ? "bg-amber-50/95 border-amber-300 text-amber-800" : "bg-white/95 border-emerald-200 text-emerald-900"}`}
   >
-            {toastMessage.type === "error" ? <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" /> : toastMessage.type === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+            {toastMessage.type === "error" ? <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" /> : toastMessage.type === "warning" ? <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-[#0E947A] shrink-0" />}
             <span>{toastMessage.text}</span>
           </motion.div>}
       </AnimatePresence>
 
       {
-    /* Left Sidebar Navigation */
+    /* Left Sidebar Navigation (Sits on Green Outer Frame) */
   }
       <Sidebar
     currentUser={currentUser}
@@ -335,36 +336,42 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
   />
 
       {
-    /* Main Content Area */
+    /* Main Rounded White Canvas (Locked to 1 Window Frame, Only Inner Content Scrolls) */
   }
-      <div className="min-[1100px]:pl-72 flex flex-col min-h-screen">
-        {
-    /* Top Header Bar */
+      <div className="flex-1 flex flex-col h-screen max-h-screen min-w-0 min-[1100px]:py-3.5 min-[1100px]:pr-3.5 overflow-hidden">
+        <div className="flex-1 bg-white min-[1100px]:rounded-[38px] flex flex-col h-full overflow-hidden relative">
+          {
+    /* Top Header Bar inside White Canvas (Pinned, Borderless) */
   }
-        <HeaderBar
+          <HeaderBar
     currentUser={currentUser}
     activeTab={activeTab}
     onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
     onSwitchRole={handleSwitchRole}
     unverifiedCount={unverifiedCount}
+    clarificationCount={clarificationCount}
+    claims={claims}
+    onSelectClaim={(c) => setSelectedClaim(c)}
+    onNavigateTab={(tab) => setActiveTab(tab)}
   />
 
-        {
-    /* Main Content Container */
+          {
+    /* Scrollable Inner Content Area */
   }
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          <AnimatePresence mode="wait">
-            {
+          <main className="flex-1 overflow-y-auto overflow-x-hidden px-5 sm:px-8 lg:px-10 pt-2 pb-8 scroll-smooth">
+            <div className="max-w-7xl w-full mx-auto">
+              <AnimatePresence mode="wait">
+                {
     /* TAB: DASHBOARD (Distinct for Faskes vs Admin) */
   }
-            {activeTab === "dashboard" && <motion.div
+                {activeTab === "dashboard" && <motion.div
     key="dashboard"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                {isAdmin ? <DashboardAdminView
+                    {isAdmin ? <DashboardAdminView
     claims={claims}
     currentUser={currentUser}
     onSelectClaim={(c) => setSelectedClaim(c)}
@@ -385,134 +392,122 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     }}
     onGoToKlaimSaya={() => setActiveTab("claims")}
   />}
-              </motion.div>}
+                  </motion.div>}
 
-            {
+                {
     /* TAB: CLAIMS (Verifikasi & Daftar Klaim for Admin, Klaim Saya for Faskes) */
   }
-            {(activeTab === "claims" || activeTab === "verification-queue" || activeTab === "findings") && <motion.div
+                {(activeTab === "claims" || activeTab === "verification-queue" || activeTab === "findings") && <motion.div
     key="claims"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <ClaimsListView
+                    <ClaimsListView
     claims={claims}
     currentUser={currentUser}
     onSelectClaim={(c) => setSelectedClaim(c)}
     onOpenNewClaimModal={() => setIsNewClaimModalOpen(true)}
     initialSubTab={activeTab === "verification-queue" ? "queue" : activeTab === "findings" ? "findings" : void 0}
   />
-              </motion.div>}
+                  </motion.div>}
 
-            {
+                {
     /* TAB: LAB VAULT */
   }
-            {activeTab === "lab-vault" && <motion.div
+                {activeTab === "lab-vault" && <motion.div
     key="lab-vault"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <LabVaultView
+                    <LabVaultView
     labResults={labResults}
     currentUser={currentUser}
     onAddLabResult={handleAddLabResult}
     isOpenSimulator={isLabSimulatorOpen}
     onOpenSimulatorChange={setIsLabSimulatorOpen}
   />
-              </motion.div>}
+                  </motion.div>}
 
-            {
+                {
     /* TAB: KLARIFIKASI (Faskes Only) */
   }
-            {!isAdmin && activeTab === "klarifikasi" && <motion.div
+                {!isAdmin && activeTab === "klarifikasi" && <motion.div
     key="klarifikasi"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <KlarifikasiFaskesView
+                    <KlarifikasiFaskesView
     claims={claims}
     currentUser={currentUser}
     onSubmitRevision={handleSubmitRevision}
     onSelectClaim={(c) => setSelectedClaim(c)}
   />
-              </motion.div>}
+                  </motion.div>}
 
-            {
+                {
     /* TAB: PROFIL FASKES (Faskes Only) */
   }
-            {!isAdmin && activeTab === "profil" && <motion.div
+                {!isAdmin && activeTab === "profil" && <motion.div
     key="profil"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <ProfilFaskesView
+                    <ProfilFaskesView
     currentUser={currentUser}
     claimsCount={claims.filter((c) => c.facilityId === currentUser.facilityId).length}
   />
-              </motion.div>}
+                  </motion.div>}
 
-            {
+                {
     /* TAB: AI SETTINGS (Admin Only) */
   }
-            {isAdmin && activeTab === "ai-settings" && <motion.div
+                {isAdmin && activeTab === "ai-settings" && <motion.div
     key="ai-settings"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <AiSettingsView currentUser={currentUser} onShowToast={showToast} />
-              </motion.div>}
+                    <AiSettingsView currentUser={currentUser} onShowToast={showToast} />
+                  </motion.div>}
 
-            {
+                {
     /* TAB: NATIONAL INSIGHTS (Admin Only) */
   }
-            {isAdmin && activeTab === "insights" && <motion.div
+                {isAdmin && activeTab === "insights" && <motion.div
     key="insights"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <NationalInsightsView />
-              </motion.div>}
+                    <NationalInsightsView />
+                  </motion.div>}
 
-            {
+                {
     /* TAB: AUDIT CHAIN & AUDIT LOGS (Admin Only) */
   }
-            {isAdmin && (activeTab === "audit-chain" || activeTab === "audit-logs") && <motion.div
+                {isAdmin && (activeTab === "audit-chain" || activeTab === "audit-logs") && <motion.div
     key="audit-chain"
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -8 }}
-    transition={{ duration: 0.2, ease: "easeOut" }}
+    initial={{ opacity: 0, y: 14, scale: 0.992 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: -10, scale: 0.995 }}
+    transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
   >
-                <AuditChainView seals={seals} auditLogs={auditLogs} />
-              </motion.div>}
-          </AnimatePresence>
-        </main>
-
-        {
-    /* Clean Footer */
-  }
-        <footer className="border-t border-slate-200/80 bg-white py-4 mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-            <p>
-              <strong>VeriMed</strong> • Platform Integritas & Verifikasi Kriptografis Klaim Pelayanan Kesehatan
-            </p>
-            <p className="font-mono text-[11px] text-emerald-700 font-semibold">
-              Ed25519 & SHA-256 Merkle Engine
-            </p>
-          </div>
-        </footer>
+                    <AuditChainView seals={seals} auditLogs={auditLogs} />
+                  </motion.div>}
+              </AnimatePresence>
+            </div>
+          </main>
+        </div>
       </div>
 
       {
