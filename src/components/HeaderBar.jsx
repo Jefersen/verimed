@@ -210,21 +210,32 @@ const HeaderBar = ({
         </div>
       </div>
 
-      {/* Right: Role Switcher + User Profile + Notification Bell */}
+      {/* Right: Role Switcher (Demo Only) + Pairing Badge + User Profile + Notification Bell */}
       <div className="flex items-center gap-3 sm:gap-5 shrink-0">
         {currentUser && (
           <>
-            <motion.button
-              type="button"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              onClick={onSwitchRole}
-              className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D6F2EE]/70 hover:bg-[#D6F2EE] text-[#0E947A] text-xs font-bold transition-colors cursor-pointer group outline-none border-none"
-              title="Beralih Peran Simulasi"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 text-[#0E947A] group-hover:rotate-180 transition-transform duration-500" />
-              <span>{isAdmin ? "Mode Admin" : "Mode Faskes"}</span>
-            </motion.button>
+            {currentUser.isDemo ? (
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+                onClick={onSwitchRole}
+                className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D6F2EE]/70 hover:bg-[#D6F2EE] text-[#0E947A] text-xs font-bold transition-colors cursor-pointer group outline-none border-none"
+                title="Beralih Peran Simulasi (Khusus Akun Demo)"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-[#0E947A] group-hover:rotate-180 transition-transform duration-500" />
+                <span>{isAdmin ? "Demo Admin" : "Demo Faskes"}</span>
+              </motion.button>
+            ) : (
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D6F2EE]/60 text-[#0E947A] text-[11px] font-bold font-mono">
+                <span className="w-2 h-2 rounded-full bg-[#0E947A]" />
+                <span>
+                  {isAdmin
+                    ? `Kode Wilayah: ${currentUser.pairingCode || "BPJS-KC-JKT01"}`
+                    : `Terhubung: ${currentUser.pairingCode || "BPJS-KC-JKT01"}`}
+                </span>
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <div className="hidden md:block text-right">

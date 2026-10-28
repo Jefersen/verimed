@@ -148,7 +148,7 @@ function CustomSelect({
     transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
     role="listbox"
     tabIndex={-1}
-    className={`absolute ${openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5"} ${matchWidth ? "left-0 right-0 w-full" : `${computedAlign === "right" ? "right-0" : "left-0"} min-w-full w-max max-w-[min(90vw,480px)]`} z-50 bg-white/98 backdrop-blur-md border border-slate-200/90 rounded-2xl shadow-xl shadow-slate-400/20 p-1.5 overflow-hidden max-h-64 overflow-y-auto space-y-1 scrollbar-thin ${menuClassName}`}
+    className={`absolute ${openUpward ? "bottom-full mb-1.5" : "top-full mt-1.5"} ${matchWidth ? "left-0 right-0 w-full" : `${computedAlign === "right" ? "right-0" : "left-0"} min-w-full w-max max-w-[min(90vw,480px)]`} z-50 bg-white border border-slate-200/90 rounded-2xl shadow-xl shadow-slate-400/20 p-2 overflow-x-hidden max-h-64 overflow-y-auto space-y-1 outline-none focus:outline-none ${menuClassName}`}
   >
             {options.map((opt) => {
     const isSelected = opt.value === value;

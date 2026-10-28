@@ -9,7 +9,10 @@ import {
   Send,
   Copy,
   Check,
-  X
+  X,
+  Cpu,
+  Radio,
+  RefreshCw
 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
 import { sha256Sync } from "../utils/crypto";
@@ -19,7 +22,57 @@ const COMMON_TESTS = [
   { name: "Trombosit", unit: "/\xB5L", normalMin: 15e4, normalMax: 45e4, defaultVal: 78e3 },
   { name: "Ureum Darah", unit: "mg/dL", normalMin: 15, normalMax: 45, defaultVal: 142 },
   { name: "Kreatinin Serum", unit: "mg/dL", normalMin: 0.6, normalMax: 1.2, defaultVal: 8.2 },
-  { name: "SGOT / AST", unit: "U/L", normalMin: 0, normalMax: 35, defaultVal: 28 }
+  { name: "SGOT / AST", unit: "U/L", normalMin: 0, normalMax: 35, defaultVal: 28 },
+  { name: "MRI Brain 1.5T (Skor ASPECTS)", unit: "Skor", normalMin: 10, normalMax: 10, defaultVal: 6 },
+  { name: "CT-Scan Thorax High-Res (Skor GGO)", unit: "Skor", normalMin: 0, normalMax: 2, defaultVal: 14 },
+  { name: "Echocardiography Fraksi Ejeksi (LVEF)", unit: "%", normalMin: 55, normalMax: 70, defaultVal: 38 }
+];
+const INITIAL_DEVICES = [
+  {
+    value: "Sysmex XN-1000 Hematology",
+    label: "Sysmex XN-1000 Hematology",
+    description: "Level 2 Registered Analyzer (Hematologi • HL7 v2.5)",
+    badge: "LIS L2",
+    badgeColor: "bg-emerald-100 text-emerald-800",
+    protocol: "HL7 v2.5 / ASTM",
+    ip: "192.168.10.14:5100"
+  },
+  {
+    value: "Siemens MAGNETOM Altea 1.5T MRI",
+    label: "Siemens MAGNETOM Altea 1.5T MRI",
+    description: "Modalitas Radiologi Neurologi & Vaskular (DICOM SR / PACS)",
+    badge: "DICOM L2",
+    badgeColor: "bg-teal-100 text-teal-800",
+    protocol: "DICOM TLS / PACS",
+    ip: "192.168.10.22:104"
+  },
+  {
+    value: "GE Revolution CT-Scan 128-Slice",
+    label: "GE Revolution CT-Scan 128-Slice",
+    description: "Modalitas CT-Scan Thorax & Trauma (DICOM SR / PACS)",
+    badge: "DICOM L2",
+    badgeColor: "bg-cyan-100 text-cyan-800",
+    protocol: "DICOM TLS / PACS",
+    ip: "192.168.10.25:104"
+  },
+  {
+    value: "Philips EPIQ CVx Echocardiography",
+    label: "Philips EPIQ CVx Echocardiography",
+    description: "Modalitas Kardiologi & Ultrasonografi Jantung (DICOM/HL7)",
+    badge: "CARDIO L2",
+    badgeColor: "bg-sky-100 text-sky-800",
+    protocol: "DICOM / FHIR",
+    ip: "192.168.10.31:104"
+  },
+  {
+    value: "Abbott Architect c8000",
+    label: "Abbott Architect c8000",
+    description: "Clinical Chemistry & Immunoassay Analyzer",
+    badge: "LIS L2",
+    badgeColor: "bg-indigo-100 text-indigo-800",
+    protocol: "HL7 v2.5",
+    ip: "192.168.10.18:5100"
+  }
 ];
 const LabVaultView = ({
   labResults,
@@ -42,10 +95,32 @@ const LabVaultView = ({
   const [encounterId, setEncounterId] = useState("ENC-2026-002");
   const [specimenId, setSpecimenId] = useState(`SPEC-${Math.floor(1e3 + Math.random() * 9e3)}`);
   const [sourceName, setSourceName] = useState("Sysmex XN-1000 Hematology");
+  const [devices, setDevices] = useState(INITIAL_DEVICES);
+  const [isScanningDevice, setIsScanningDevice] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isTestSelectOpen, setIsTestSelectOpen] = useState(false);
   const testConfig = COMMON_TESTS.find((t) => t.name === selectedTest) || COMMON_TESTS[0];
   const isAbnormal = testValue < testConfig.normalMin || testValue > testConfig.normalMax;
+  const handleScanPluggedDevice = () => {
+    setIsScanningDevice(true);
+    setTimeout(() => {
+      setIsScanningDevice(false);
+      const exists = devices.some((d) => d.value.includes("Cobas 6000"));
+      if (!exists) {
+        const pluggedDevice = {
+          value: "Roche Cobas 6000 Modular (Auto-Detected)",
+          label: "Roche Cobas 6000 Modular (Auto-Detected)",
+          description: "Terdeteksi otomatis via Gateway HL7/ASTM Port 5102",
+          badge: "PLUG & PLAY",
+          badgeColor: "bg-amber-100 text-amber-800",
+          protocol: "HL7 Auto-Handshake",
+          ip: "192.168.10.44:5102"
+        };
+        setDevices((prev) => [pluggedDevice, ...prev]);
+        setSourceName(pluggedDevice.value);
+      }
+    }, 700);
+  };
   const handleTestChange = (name) => {
     setSelectedTest(name);
     const found = COMMON_TESTS.find((t) => t.name === name);
@@ -125,6 +200,59 @@ const LabVaultView = ({
         </div>
       </div>
 
+      {/* Connected Medical Analyzers & Radiology Modalities (HL7 / DICOM Auto-Detect) */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 sm:p-5 space-y-3.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-[#D6F2EE] text-[#0E947A] flex items-center justify-center shrink-0">
+              <Cpu className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                <span>Mesin Medis & Modalitas Terhubung (Auto-Detect HL7 / DICOM)</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                  <Radio className="w-3 h-3 animate-pulse text-emerald-600" />
+                  {devices.length} Mesin Online
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-500">
+                Alat Lab LIS, MRI, CT-Scan, dan Echocardiography terdeteksi otomatis lewat Gateway LAN/DICOM rumah sakit
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleScanPluggedDevice}
+            disabled={isScanningDevice}
+            className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-[#F5F7F9] hover:bg-[#D6F2EE]/60 text-slate-700 hover:text-[#0E947A] text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isScanningDevice ? "animate-spin text-[#0E947A]" : ""}`} />
+            <span>{isScanningDevice ? "Mendeteksi Port HL7/DICOM..." : "Scan Alat Baru (Plug & Play)"}</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+          {devices.map((dev) => (
+            <div
+              key={dev.value}
+              className="p-3 rounded-xl bg-[#F8FAFC] border border-slate-200/70 flex items-start justify-between gap-2"
+            >
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-slate-800 truncate">{dev.label}</p>
+                <p className="text-[10px] text-slate-500 truncate mt-0.5">{dev.description}</p>
+                <p className="text-[10px] font-mono text-emerald-700 mt-1">
+                  {dev.protocol} • {dev.ip}
+                </p>
+              </div>
+              <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${dev.badgeColor}`}>
+                {dev.badge}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {
     /* Simulator Modal Drawer (Portal to document.body) */
   }
@@ -159,10 +287,10 @@ const LabVaultView = ({
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-slate-900">
-                      Simulator Pengiriman Hasil Lab (LIS Ingestion)
+                      Simulator Pengiriman Hasil Lab & Modalitas (LIS / DICOM)
                     </h3>
                     <p className="text-[11px] text-slate-500">
-                      Entri langsung tersegel Level 2 LIS
+                      Entri langsung tersegel Level 2 dari Mesin Lab, MRI, CT-Scan, atau Echo
                     </p>
                   </div>
                 </div>
@@ -186,35 +314,13 @@ const LabVaultView = ({
   >
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Pilih Mesin Analyzer / LIS
+                    Pilih Mesin Analyzer / Modalitas (LIS & DICOM)
                   </label>
                   <CustomSelect
     value={sourceName}
     onChange={(val) => setSourceName(String(val))}
-    options={[
-      {
-        value: "Sysmex XN-1000 Hematology",
-        label: "Sysmex XN-1000 Hematology",
-        description: "Level 2 Registered Analyzer (Hematologi)",
-        badge: "LIS L2",
-        badgeColor: "bg-emerald-100 text-emerald-800"
-      },
-      {
-        value: "Abbott Architect c8000",
-        label: "Abbott Architect c8000",
-        description: "Clinical Chemistry & Immunoassay Analyzer",
-        badge: "LIS L2",
-        badgeColor: "bg-sky-100 text-sky-800"
-      },
-      {
-        value: "Cobas 6000 Clinical Chemistry",
-        label: "Cobas 6000 Clinical Chemistry",
-        description: "Roche Diagnostics Modular Analyzer",
-        badge: "LIS L2",
-        badgeColor: "bg-indigo-100 text-indigo-800"
-      }
-    ]}
-    placeholder="Pilih Mesin Analyzer..."
+    options={devices}
+    placeholder="Pilih Mesin Analyzer / Modalitas..."
   />
                 </div>
 

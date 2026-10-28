@@ -12,6 +12,10 @@ import { buildClaimLeaves, createSeal } from "../utils/crypto";
 import { evaluateClaimRules } from "../utils/rules";
 const COMMON_INACBG = [
   { code: "D-4-10-I", name: "Demam Berdarah Dengue Ringan", defaultSev: 1, defaultAmount: 435e4, dxCode: "A91", dxName: "Dengue Hemorrhagic Fever" },
+  { code: "G-4-14-III", name: "Stroke Iskemik Akut + Pencitraan MRI Brain 1.5T", defaultSev: 3, defaultAmount: 194e5, dxCode: "I63.9", dxName: "Cerebral Infarction (MRI Terkonfirmasi)" },
+  { code: "I-4-10-II", name: "Sindrom Koroner Akut (STEMI) + Echocardiography", defaultSev: 2, defaultAmount: 228e5, dxCode: "I21.9", dxName: "Acute Myocardial Infarction" },
+  { code: "G-1-10-III", name: "Bedah Craniotomy Tumor Otak + Navigasi MRI/CT", defaultSev: 3, defaultAmount: 385e5, dxCode: "D33.0", dxName: "Neoplasma Jinak Supratentorial Otak" },
+  { code: "J-4-16-II", name: "Pneumonia Berat + CT-Scan Thorax High-Res", defaultSev: 2, defaultAmount: 146e5, dxCode: "J18.9", dxName: "Pneumonia Berat Bilateral" },
   { code: "D-4-10-II", name: "Anemia Berat Derajat Sedang-Tinggi", defaultSev: 2, defaultAmount: 89e5, dxCode: "D64.9", dxName: "Anemia Berat Gravis" },
   { code: "B-4-14-I", name: "Apendektomi Ringan (Paket Bedah)", defaultSev: 1, defaultAmount: 112e5, dxCode: "K35.8", dxName: "Apendisitis Akut Lainnya" },
   { code: "W-4-10-I", name: "Seksio Sesarea Tanpa Penyulit", defaultSev: 1, defaultAmount: 135e5, dxCode: "O82.0", dxName: "Delivery by elective caesarean section" },

@@ -25,14 +25,15 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
-  button, a, input, select, textarea {
+  button, a, input, select, textarea, [role="listbox"], [role="option"], [tabindex] {
     outline: none !important;
-    box-shadow: none;
   }
 
   button:focus, button:focus-visible,
   a:focus, a:focus-visible,
-  input:focus, input:focus-visible {
+  input:focus, input:focus-visible,
+  [role="listbox"]:focus, [role="listbox"]:focus-visible,
+  [tabindex]:focus, [tabindex]:focus-visible {
     outline: none !important;
   }
 }

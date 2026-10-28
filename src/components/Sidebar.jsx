@@ -295,24 +295,26 @@ const Sidebar = ({
               );
             })}
 
-            {/* Secondary Links (Switch Role & LogOut — Placed Right Below Menu Items) */}
+            {/* Secondary Links (Switch Role ONLY for Demo Accounts & LogOut) */}
             <div className="pt-3 mt-2 mr-4 space-y-0.5">
-              <motion.button
-                type="button"
-                whileTap={{ scale: 0.98 }}
-                onClick={onSwitchRole}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-2xl text-emerald-50/90 hover:text-white hover:bg-white/10 transition-all group outline-none border-none"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-emerald-100 group-hover:text-[#F5DF65] transition-colors">
-                    <ArrowRightLeft className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />
+              {currentUser?.isDemo && (
+                <motion.button
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={onSwitchRole}
+                  className="w-full flex items-center justify-between px-4 py-2 rounded-2xl text-emerald-50/90 hover:text-white hover:bg-white/10 transition-all group outline-none border-none"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center text-emerald-100 group-hover:text-[#F5DF65] transition-colors">
+                      <ArrowRightLeft className="w-3.5 h-3.5 group-hover:rotate-180 transition-transform duration-500" />
+                    </div>
+                    <span className="text-xs font-semibold">Beralih Peran</span>
                   </div>
-                  <span className="text-xs font-semibold">Beralih Peran</span>
-                </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-[#F5DF65]">
-                  {isAdmin ? "Ke Faskes" : "Ke Admin"}
-                </span>
-              </motion.button>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/15 text-[#F5DF65]">
+                    {isAdmin ? "Ke Faskes" : "Ke Admin"}
+                  </span>
+                </motion.button>
+              )}
 
               {currentUser && (
                 <motion.button

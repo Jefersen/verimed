@@ -35,21 +35,21 @@ const ProfilFaskesView = ({ currentUser, claimsCount = 0 }) => {
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <span className="text-[10px] text-slate-400 font-bold uppercase">Status Kemitraan BPJS</span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Kode Kemitraan & Pairing Admin BPJS</span>
             <p className="text-sm font-bold text-emerald-700 flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Mitra Aktif FKRTL Terdaftar</span>
+              <span className="font-mono">{currentUser.pairingCode || "BPJS-KC-JKT01"}</span>
             </p>
-            <p className="text-slate-500">Total Klaim Tersegel: <strong>{claimsCount} Berkas</strong></p>
+            <p className="text-slate-500">Terhubung ke Antrean Verifikator Cabang • <strong>{claimsCount} Klaim Tersegel</strong></p>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-            <span className="text-[10px] text-slate-400 font-bold uppercase">Sertifikat LIS Level 2</span>
+            <span className="text-[10px] text-slate-400 font-bold uppercase">Sertifikat LIS & Modalitas DICOM Level 2</span>
             <p className="text-sm font-bold text-slate-800 flex items-center gap-1.5 font-mono text-xs">
               <Key className="w-3.5 h-3.5 text-emerald-600" />
-              <span>HMAC-SHA256 Registered</span>
+              <span>HMAC-SHA256 & DICOM TLS Registered</span>
             </p>
-            <p className="text-[11px] text-slate-500">Terhubung ke Mesin Sysmex XN-1000</p>
+            <p className="text-[11px] text-slate-500">Terhubung: Sysmex XN-1000, Siemens MRI 1.5T, GE CT-Scan 128-Slice, Philips Echo</p>
           </div>
         </div>
 

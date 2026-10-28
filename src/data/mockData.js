@@ -6,7 +6,9 @@ const INITIAL_USERS = [
     name: "dr. Budi Setiawan, Sp.PK",
     email: "admin@verimed.id",
     role: "admin",
-    facilityName: "Kantor Cabang BPJS & VeriMed Central"
+    facilityName: "Kantor Cabang BPJS & VeriMed Central",
+    pairingCode: "BPJS-KC-JKT01",
+    isDemo: true
   },
   {
     id: "USR-FASKES-01",
@@ -14,7 +16,9 @@ const INITIAL_USERS = [
     email: "faskes@siloam.co.id",
     role: "faskes",
     facilityId: "FASKES-01",
-    facilityName: "RS Siloam Sejahtera"
+    facilityName: "RS Siloam Sejahtera",
+    pairingCode: "BPJS-KC-JKT01",
+    isDemo: true
   },
   {
     id: "USR-FASKES-02",
@@ -22,10 +26,33 @@ const INITIAL_USERS = [
     email: "rsud@bhaktihusada.go.id",
     role: "faskes",
     facilityId: "FASKES-02",
-    facilityName: "RSUD Bhakti Husada"
+    facilityName: "RSUD Bhakti Husada",
+    pairingCode: "BPJS-KC-JKT01",
+    isDemo: true
   }
 ];
 const INITIAL_LAB_RESULTS = [
+  {
+    id: "MRI-2026-090",
+    facilityId: "FASKES-01",
+    facilityName: "RS Siloam Sejahtera",
+    sourceId: "DICOM-MRI-01",
+    sourceName: "Siemens MAGNETOM Altea 1.5T MRI",
+    specimenId: "DCM-9901",
+    encounterId: "ENC-2026-009",
+    patientPseudoId: "PASIEN-7721",
+    test: "MRI Brain 1.5T (Skor ASPECTS)",
+    value: 6,
+    unit: "Skor",
+    referenceRange: "10 - 10 (Normal)",
+    isAbnormal: true,
+    sampledAt: "2026-10-14T08:10:00Z",
+    receivedAt: "2026-10-14T08:42:00Z",
+    payloadHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    sealId: "SEAL-MRI-090",
+    assuranceLevel: "Level 2",
+    status: "valid"
+  },
   {
     id: "LAB-2026-081",
     facilityId: "FASKES-01",
