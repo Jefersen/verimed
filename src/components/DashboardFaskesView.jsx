@@ -103,6 +103,7 @@ const DashboardFaskesView = ({
         <div className="flex flex-wrap items-center gap-3 shrink-0">
           <motion.button
             type="button"
+            data-tour="faskes-btn-new-claim"
             whileHover={{ scale: 1.03, y: -1 }}
             whileTap={{ scale: 0.97 }}
             onClick={onOpenNewClaimModal}
@@ -114,6 +115,7 @@ const DashboardFaskesView = ({
 
           <motion.button
             type="button"
+            data-tour="faskes-btn-lab"
             whileHover={{ scale: 1.03, y: -1 }}
             whileTap={{ scale: 0.97 }}
             onClick={onGoToLab}

@@ -9,7 +9,8 @@ import {
   ShieldAlert,
   CheckCircle2,
   X,
-  ArrowRight
+  ArrowRight,
+  Compass
 } from "lucide-react";
 
 const TAB_TITLES = {
@@ -60,6 +61,7 @@ const HeaderBar = ({
   activeTab,
   onOpenMobileSidebar,
   onSwitchRole,
+  onStartTutorial,
   unverifiedCount = 0,
   clarificationCount = 0,
   claims = [],
@@ -215,17 +217,31 @@ const HeaderBar = ({
         {currentUser && (
           <>
             {currentUser.isDemo ? (
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={onSwitchRole}
-                className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D6F2EE]/70 hover:bg-[#D6F2EE] text-[#0E947A] text-xs font-bold transition-colors cursor-pointer group outline-none border-none"
-                title="Beralih Peran Simulasi (Khusus Akun Demo)"
-              >
-                <ArrowRightLeft className="w-3.5 h-3.5 text-[#0E947A] group-hover:rotate-180 transition-transform duration-500" />
-                <span>{isAdmin ? "Demo Admin" : "Demo Faskes"}</span>
-              </motion.button>
+              <div className="hidden sm:flex items-center gap-2">
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onStartTutorial}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0E947A] hover:bg-[#0B7A64] text-white text-xs font-bold shadow-xs transition-colors cursor-pointer outline-none border-none"
+                  title="Mulai Tutorial Interaktif (Khusus Akun Demo)"
+                >
+                  <Compass className="w-3.5 h-3.5 text-[#F5DF65]" />
+                  <span>Tutorial</span>
+                </motion.button>
+
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onSwitchRole}
+                  className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#D6F2EE]/70 hover:bg-[#D6F2EE] text-[#0E947A] text-xs font-bold transition-colors cursor-pointer group outline-none border-none"
+                  title="Beralih Peran Simulasi (Khusus Akun Demo)"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 text-[#0E947A] group-hover:rotate-180 transition-transform duration-500" />
+                  <span>{isAdmin ? "Demo Admin" : "Demo Faskes"}</span>
+                </motion.button>
+              </div>
             ) : (
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D6F2EE]/60 text-[#0E947A] text-[11px] font-bold font-mono">
                 <span className="w-2 h-2 rounded-full bg-[#0E947A]" />

@@ -17,16 +17,126 @@ import {
 import { CustomSelect } from "./CustomSelect";
 import { sha256Sync } from "../utils/crypto";
 const COMMON_TESTS = [
-  { name: "Hemoglobin (Hb)", unit: "g/dL", normalMin: 12, normalMax: 16, defaultVal: 11.4 },
-  { name: "Hitung Leukosit (WBC)", unit: "/\xB5L", normalMin: 4e3, normalMax: 11e3, defaultVal: 7200 },
-  { name: "Trombosit", unit: "/\xB5L", normalMin: 15e4, normalMax: 45e4, defaultVal: 78e3 },
-  { name: "Ureum Darah", unit: "mg/dL", normalMin: 15, normalMax: 45, defaultVal: 142 },
-  { name: "Kreatinin Serum", unit: "mg/dL", normalMin: 0.6, normalMax: 1.2, defaultVal: 8.2 },
-  { name: "SGOT / AST", unit: "U/L", normalMin: 0, normalMax: 35, defaultVal: 28 },
-  { name: "MRI Brain 1.5T (Skor ASPECTS)", unit: "Skor", normalMin: 10, normalMax: 10, defaultVal: 6 },
-  { name: "CT-Scan Thorax High-Res (Skor GGO)", unit: "Skor", normalMin: 0, normalMax: 2, defaultVal: 14 },
-  { name: "Echocardiography Fraksi Ejeksi (LVEF)", unit: "%", normalMin: 55, normalMax: 70, defaultVal: 38 }
+  {
+    name: "Hemoglobin (Hb)",
+    unit: "g/dL",
+    normalMin: 12,
+    normalMax: 16,
+    defaultVal: 11.4,
+    deviceGroup: "hematology",
+    isImaging: false
+  },
+  {
+    name: "Hitung Leukosit (WBC)",
+    unit: "/\xB5L",
+    normalMin: 4e3,
+    normalMax: 11e3,
+    defaultVal: 7200,
+    deviceGroup: "hematology",
+    isImaging: false
+  },
+  {
+    name: "Trombosit",
+    unit: "/\xB5L",
+    normalMin: 15e4,
+    normalMax: 45e4,
+    defaultVal: 78e3,
+    deviceGroup: "hematology",
+    isImaging: false
+  },
+  {
+    name: "Ureum Darah",
+    unit: "mg/dL",
+    normalMin: 15,
+    normalMax: 45,
+    defaultVal: 142,
+    deviceGroup: "chemistry",
+    isImaging: false
+  },
+  {
+    name: "Kreatinin Serum",
+    unit: "mg/dL",
+    normalMin: 0.6,
+    normalMax: 1.2,
+    defaultVal: 8.2,
+    deviceGroup: "chemistry",
+    isImaging: false
+  },
+  {
+    name: "SGOT / AST",
+    unit: "U/L",
+    normalMin: 0,
+    normalMax: 35,
+    defaultVal: 28,
+    deviceGroup: "chemistry",
+    isImaging: false
+  },
+  {
+    name: "MRI Brain 1.5T — Citra Axial DWI/FLAIR (Skor ASPECTS)",
+    unit: "Skor ASPECTS",
+    normalMin: 10,
+    normalMax: 10,
+    defaultVal: 6,
+    normalVal: 10,
+    deviceGroup: "mri",
+    isImaging: true,
+    modalityType: "MRI",
+    dicomSeries: "SERIES-DWI-AXIAL-004.dcm",
+    findingAbnormal: "Lesi hiperintens akut pada teritori MCA kiri (Infark Iskemik • ASPECTS 6/10)",
+    findingNormal: "Parenkim serebri normal, tidak tampak lesi infark maupun perdarahan (ASPECTS 10/10)"
+  },
+  {
+    name: "MRI Lumbosacral Spine T2W — Citra Sagittal",
+    unit: "Derajat HNP",
+    normalMin: 0,
+    normalMax: 0,
+    defaultVal: 3,
+    normalVal: 0,
+    deviceGroup: "mri",
+    isImaging: true,
+    modalityType: "MRI",
+    dicomSeries: "SERIES-T2W-SAG-012.dcm",
+    findingAbnormal: "Protrusi diskus intervertebralis L4-L5 menekan radiks saraf (Grade 3)",
+    findingNormal: "Korda spinalis & diskus intervertebralis L1-S1 dalam batas normal (Grade 0)"
+  },
+  {
+    name: "CT-Scan Thorax High-Res — Citra Axial Paru (Skor GGO)",
+    unit: "Skor GGO",
+    normalMin: 0,
+    normalMax: 2,
+    defaultVal: 14,
+    normalVal: 0,
+    deviceGroup: "ct",
+    isImaging: true,
+    modalityType: "CT",
+    dicomSeries: "SERIES-HRCT-LUNG-088.dcm",
+    findingAbnormal: "Ground-Glass Opacity (GGO) multifokal bilateral lobus bawah (Skor Keparahan 14/25)",
+    findingNormal: "Lapang paru bersih kedua sisi, sinus kostofrenikus tajam (Skor 0/25)"
+  },
+  {
+    name: "Echocardiography Doppler — Citra 4-Chamber (LVEF)",
+    unit: "% LVEF",
+    normalMin: 55,
+    normalMax: 70,
+    defaultVal: 38,
+    normalVal: 62,
+    deviceGroup: "echo",
+    isImaging: true,
+    modalityType: "ECHO",
+    dicomSeries: "SERIES-ECHO-4CH-019.dcm",
+    findingAbnormal: "Hipokinesia dinding anterior ventrikel kiri, penurunan fungsi pompa jantung (LVEF 38%)",
+    findingNormal: "Kontraktilitas miokardium baik, katup jantung normal (LVEF 62%)"
+  }
 ];
+
+function getDeviceGroup(deviceName = "") {
+  const lower = deviceName.toLowerCase();
+  if (lower.includes("mri")) return "mri";
+  if (lower.includes("ct-scan") || lower.includes("ct scan")) return "ct";
+  if (lower.includes("echo")) return "echo";
+  if (lower.includes("abbott") || lower.includes("cobas")) return "chemistry";
+  return "hematology";
+}
 const INITIAL_DEVICES = [
   {
     value: "Sysmex XN-1000 Hematology",
@@ -99,8 +209,48 @@ const LabVaultView = ({
   const [isScanningDevice, setIsScanningDevice] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [isTestSelectOpen, setIsTestSelectOpen] = useState(false);
-  const testConfig = COMMON_TESTS.find((t) => t.name === selectedTest) || COMMON_TESTS[0];
+  const [uploadedScanUrl, setUploadedScanUrl] = useState(null);
+  const [uploadedScanName, setUploadedScanName] = useState("");
+
+  const activeDeviceGroup = getDeviceGroup(sourceName);
+  const availableTestsForDevice = COMMON_TESTS.filter(
+    (t) => t.deviceGroup === activeDeviceGroup
+  );
+  const testConfig =
+    COMMON_TESTS.find((t) => t.name === selectedTest) ||
+    availableTestsForDevice[0] ||
+    COMMON_TESTS[0];
   const isAbnormal = testValue < testConfig.normalMin || testValue > testConfig.normalMax;
+
+  const handleDeviceChange = (newDeviceName) => {
+    const devStr = String(newDeviceName);
+    setSourceName(devStr);
+    const grp = getDeviceGroup(devStr);
+    const matchingTests = COMMON_TESTS.filter((t) => t.deviceGroup === grp);
+    if (matchingTests.length > 0) {
+      setSelectedTest(matchingTests[0].name);
+      setTestValue(matchingTests[0].defaultVal);
+    }
+    setUploadedScanUrl(null);
+    setUploadedScanName("");
+    if (grp === "mri" || grp === "ct" || grp === "echo") {
+      setSpecimenId(`DCM-${Math.floor(1e3 + Math.random() * 9e3)}`);
+    } else {
+      setSpecimenId(`SPEC-${Math.floor(1e3 + Math.random() * 9e3)}`);
+    }
+  };
+
+  const handleScanImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadedScanName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      setUploadedScanUrl(String(reader.result));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleScanPluggedDevice = () => {
     setIsScanningDevice(true);
     setTimeout(() => {
@@ -117,7 +267,7 @@ const LabVaultView = ({
           ip: "192.168.10.44:5102"
         };
         setDevices((prev) => [pluggedDevice, ...prev]);
-        setSourceName(pluggedDevice.value);
+        handleDeviceChange(pluggedDevice.value);
       }
     }, 700);
   };
@@ -179,6 +329,7 @@ const LabVaultView = ({
         </div>
 
         <button
+    data-tour="btn-open-lis-simulator"
     onClick={() => setIsSimulatorOpen(true)}
     className="self-start sm:self-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs shadow-emerald-200 transition-all flex items-center gap-2"
   >
@@ -223,6 +374,7 @@ const LabVaultView = ({
 
           <button
             type="button"
+            data-tour="btn-scan-device"
             onClick={handleScanPluggedDevice}
             disabled={isScanningDevice}
             className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-[#F5F7F9] hover:bg-[#D6F2EE]/60 text-slate-700 hover:text-[#0E947A] text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer"
@@ -270,6 +422,7 @@ const LabVaultView = ({
   >
             <motion.div
     layout
+    data-tour="lis-simulator-modal"
     initial={{ opacity: 0, scale: 0.94, y: 14 }}
     animate={{ opacity: 1, scale: 1, y: 0 }}
     exit={{ opacity: 0, scale: 0.94, y: 14 }}
@@ -318,7 +471,7 @@ const LabVaultView = ({
                   </label>
                   <CustomSelect
     value={sourceName}
-    onChange={(val) => setSourceName(String(val))}
+    onChange={(val) => handleDeviceChange(val)}
     options={devices}
     placeholder="Pilih Mesin Analyzer / Modalitas..."
   />
@@ -327,7 +480,7 @@ const LabVaultView = ({
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      ID Spesimen
+                      {testConfig.isImaging ? "ID Studi DICOM / PACS" : "ID Spesimen Lab"}
                     </label>
                     <input
     type="text"
@@ -354,30 +507,150 @@ const LabVaultView = ({
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Parameter Pemeriksaan
+                    {testConfig.isImaging ? "Jenis Pencitraan / Sekuens Scan" : "Parameter Pemeriksaan"}
                   </label>
                   <CustomSelect
     value={selectedTest}
     onChange={(val) => handleTestChange(String(val))}
     onOpenChange={setIsTestSelectOpen}
     placement="bottom"
-    options={COMMON_TESTS.map((t) => ({
+    options={availableTestsForDevice.map((t) => ({
       value: t.name,
       label: t.name,
-      description: `Nilai Normal: ${t.normalMin} - ${t.normalMax} ${t.unit}`,
-      badge: t.unit,
+      description: t.isImaging
+        ? `File DICOM: ${t.dicomSeries} • Standar Normal: ${t.normalMin} ${t.unit}`
+        : `Nilai Normal: ${t.normalMin} - ${t.normalMax} ${t.unit}`,
+      badge: t.isImaging ? "CITRA DICOM" : t.unit,
       badgeColor: "bg-slate-100 text-slate-700 font-mono"
     }))}
     placeholder="Pilih Parameter Uji..."
   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Nilai Hasil ({testConfig.unit})
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
+                {testConfig.isImaging ? (
+                  <div className="space-y-3 p-3.5 rounded-2xl bg-slate-900 text-white border border-slate-800">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 block">
+                          DICOM PACS IMAGE PREVIEW • {testConfig.modalityType}
+                        </span>
+                        <p className="text-xs font-bold text-white">
+                          {uploadedScanName || testConfig.dicomSeries}
+                        </p>
+                      </div>
+
+                      <label className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-[11px] font-semibold text-emerald-200 cursor-pointer transition-colors">
+                        <span>Unggah Gambar Scan</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleScanImageUpload}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+
+                    {/* Medical Scan Visual Slice / Uploaded Image */}
+                    <div className="flex items-center gap-3.5 bg-slate-950/90 p-3 rounded-xl border border-slate-800">
+                      <div className="w-24 h-24 rounded-lg bg-black border border-slate-700 flex items-center justify-center overflow-hidden shrink-0 relative">
+                        {uploadedScanUrl ? (
+                          <img
+                            src={uploadedScanUrl}
+                            alt="Uploaded Medical Scan"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <svg viewBox="0 0 100 100" className="w-20 h-20">
+                            <ellipse
+                              cx="50"
+                              cy="50"
+                              rx="36"
+                              ry="42"
+                              fill="#1e293b"
+                              stroke="#64748b"
+                              strokeWidth="2.5"
+                            />
+                            <ellipse
+                              cx="50"
+                              cy="50"
+                              rx="29"
+                              ry="35"
+                              fill="#0f172a"
+                              stroke="#475569"
+                              strokeWidth="1.5"
+                            />
+                            <path
+                              d="M50 16 L50 84 M32 38 Q50 46 68 38 M34 62 Q50 54 66 62"
+                              stroke="#334155"
+                              strokeWidth="1.5"
+                              fill="none"
+                            />
+                            {isAbnormal && (
+                              <circle
+                                cx="61"
+                                cy="44"
+                                r="9"
+                                fill="rgba(244, 63, 94, 0.45)"
+                                stroke="#fb7185"
+                                strokeWidth="1.8"
+                              />
+                            )}
+                          </svg>
+                        )}
+                        <span className="absolute bottom-1 right-1 text-[8px] font-mono bg-black/80 text-emerald-400 px-1 rounded">
+                          512×512
+                        </span>
+                      </div>
+
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setTestValue(testConfig.defaultVal)}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                              isAbnormal
+                                ? "bg-amber-400 text-slate-950"
+                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            }`}
+                          >
+                            Citra Abnormal (Lesi +)
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setTestValue(
+                                testConfig.normalVal !== undefined
+                                  ? testConfig.normalVal
+                                  : testConfig.normalMin
+                              )
+                            }
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                              !isAbnormal
+                                ? "bg-emerald-500 text-slate-950"
+                                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                            }`}
+                          >
+                            Citra Normal (Bersih)
+                          </button>
+                        </div>
+
+                        <p className="text-[11px] text-slate-300 leading-snug">
+                          {isAbnormal ? testConfig.findingAbnormal : testConfig.findingNormal}
+                        </p>
+
+                        <p className="text-[10px] font-mono text-emerald-400">
+                          Pembacaan Kuantitatif AI: {testValue} {testConfig.unit}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Nilai Hasil ({testConfig.unit})
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
     type="number"
     step="any"
     value={testValue}
@@ -385,13 +658,14 @@ const LabVaultView = ({
     required
     className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-200 rounded-xl bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
   />
-                    <span
+                      <span
     className={`text-xs px-2.5 py-1.5 rounded-lg font-bold shrink-0 ${isAbnormal ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}
   >
-                      {isAbnormal ? "Di Luar Normal" : "Normal"}
-                    </span>
+                        {isAbnormal ? "Di Luar Normal" : "Normal"}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
                   <button
@@ -406,6 +680,7 @@ const LabVaultView = ({
                   </button>
                   <button
     type="submit"
+    data-tour="btn-submit-lis-simulator"
     className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm shadow-emerald-200 transition-all flex items-center gap-2"
   >
                     <Send className="w-3.5 h-3.5" />

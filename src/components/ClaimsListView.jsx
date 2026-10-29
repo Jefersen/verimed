@@ -15,6 +15,7 @@ import {
   FileCheck2
 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
+import { generateAiClaimReasoning } from "../utils/rules";
 const ClaimsListView = ({
   claims,
   currentUser,
@@ -327,6 +328,8 @@ const ClaimsListView = ({
                           ? { label: "Fast-Track", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
                           : { label: "Menunggu Telaah", cls: "bg-slate-50 text-slate-600 border-slate-200" };
 
+                const aiReason = generateAiClaimReasoning(claim);
+
                 return (
                   <div
                     key={claim.id}
@@ -385,31 +388,14 @@ const ClaimsListView = ({
                           </span>
                         </div>
 
-                        {/* Clean textual summary (No multiple colored badge tags!) */}
-                        <p className="text-[11px] text-slate-400 mt-1 truncate">
-                          {claim.isTampered ? (
-                            <span className="text-rose-600 font-medium flex items-center gap-1">
-                              <ShieldAlert className="w-3.5 h-3.5" />
-                              Segel hash tidak cocok dengan berkas vault
-                            </span>
-                          ) : isAdmin ? (
-                            claim.findings.length > 0 ? (
-                              <span className="text-slate-500 font-medium">
-                                {claim.findings.length} Catatan Telaah:{" "}
-                                {claim.findings.map((f) => f.ruleId).join(", ")}
-                              </span>
-                            ) : (
-                              <span className="text-emerald-700 font-medium flex items-center gap-1">
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                Lolos aturan klinis & segel utuh
-                              </span>
-                            )
-                          ) : (
-                            <span>
-                              Rawat: {claim.admitDate} s/d {claim.dischargeDate} ({claim.losDays} hari) • Segel kriptografis utuh
-                            </span>
-                          )}
-                        </p>
+                        {/* Clean AI Reasoning Summary */}
+                        <div className="text-[11px] text-slate-500 mt-1.5 flex items-start gap-1.5 leading-snug">
+                          <Sparkles className="w-3.5 h-3.5 text-[#0E947A] shrink-0 mt-0.5" />
+                          <span className="line-clamp-2">
+                            <strong className="text-slate-700">Alasan AI:</strong>{" "}
+                            {aiReason.shortReason}
+                          </span>
+                        </div>
                       </div>
                     </div>
 

@@ -15,6 +15,7 @@ import {
   BarChart3,
   Link as LinkIcon
 } from "lucide-react";
+import { generateAiClaimReasoning } from "../utils/rules";
 
 const DashboardAdminView = ({
   claims,
@@ -487,18 +488,21 @@ const DashboardAdminView = ({
                       ? { label: "Fast-Track", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
                       : { label: "Menunggu Telaah", cls: "bg-slate-50 text-slate-600 border-slate-200" };
 
+              const aiReason = generateAiClaimReasoning(claim);
+
               return (
                 <motion.div
                   key={claim.id}
+                  data-tour={idx === 0 ? "admin-priority-claim" : undefined}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.04, duration: 0.25 }}
                   onClick={() => onSelectClaim(claim)}
                   className="p-4 hover:bg-slate-50/70 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
                 >
-                  <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="flex items-start gap-3.5 min-w-0">
                     {/* Clean unified score avatar */}
-                    <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 flex flex-col items-center justify-center shrink-0">
+                    <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 flex flex-col items-center justify-center shrink-0 mt-0.5">
                       <span className="text-xs font-black font-mono leading-none">
                         {claim.riskScore}
                       </span>
@@ -519,25 +523,14 @@ const DashboardAdminView = ({
                         • {claim.facilityName} • {claim.inacbgCode}
                       </p>
 
-                      {/* Calm, readable single-line summary (No multiple colored chips!) */}
-                      <p className="text-[11px] text-slate-400 mt-1 truncate">
-                        {claim.isTampered ? (
-                          <span className="text-rose-600 font-medium flex items-center gap-1">
-                            <ShieldAlert className="w-3.5 h-3.5" />
-                            Segel hash berbeda dari berkas asli vault
-                          </span>
-                        ) : claim.findings.length > 0 ? (
-                          <span className="text-slate-500 font-medium">
-                            {claim.findings.length} Indikasi Telaah:{" "}
-                            {claim.findings.map((f) => f.ruleId).join(", ")}
-                          </span>
-                        ) : (
-                          <span className="text-emerald-700 font-medium flex items-center gap-1">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Lolos kepatuhan klinis & segel utuh
-                          </span>
-                        )}
-                      </p>
+                      {/* Calm, readable AI Reason line (No multiple colored chips!) */}
+                      <div className="text-[11px] text-slate-500 mt-1.5 flex items-start gap-1.5 leading-snug">
+                        <Sparkles className="w-3.5 h-3.5 text-[#0E947A] shrink-0 mt-0.5" />
+                        <span className="line-clamp-2">
+                          <strong className="text-slate-700">Alasan AI:</strong>{" "}
+                          {aiReason.shortReason}
+                        </span>
+                      </div>
                     </div>
                   </div>
 

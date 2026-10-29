@@ -26,6 +26,7 @@ import { ProfilFaskesView } from "./components/ProfilFaskesView";
 import { AiSettingsView } from "./components/AiSettingsView";
 import { NationalInsightsView } from "./components/NationalInsightsView";
 import { AuditChainView } from "./components/AuditChainView";
+import { DemoTutorialOverlay } from "./components/DemoTutorialOverlay";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, AlertTriangle, ShieldAlert } from "lucide-react";
 function App() {
@@ -39,6 +40,7 @@ function App() {
   const [isNewClaimModalOpen, setIsNewClaimModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isLabSimulatorOpen, setIsLabSimulatorOpen] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
   const showToast = (text, type = "success") => {
     setToastMessage({ text, type });
@@ -329,6 +331,7 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
       showToast("Anda telah keluar.");
     }}
     onSwitchRole={handleSwitchRole}
+    onStartTutorial={() => setIsTutorialOpen(true)}
     unverifiedCount={unverifiedCount}
     clarificationCount={clarificationCount}
     isOpenMobile={isMobileSidebarOpen}
@@ -348,6 +351,7 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     activeTab={activeTab}
     onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
     onSwitchRole={handleSwitchRole}
+    onStartTutorial={() => setIsTutorialOpen(true)}
     unverifiedCount={unverifiedCount}
     clarificationCount={clarificationCount}
     claims={claims}
@@ -541,6 +545,30 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     onSubmit={handleAddNewClaim}
   />}
       </AnimatePresence>
+
+      {
+    /* Interactive Guided Tutorial (Demo Accounts Only) */
+  }
+      <DemoTutorialOverlay
+    isOpen={isTutorialOpen}
+    onClose={() => setIsTutorialOpen(false)}
+    currentUser={currentUser}
+    onNavigateTab={(tab) => setActiveTab(tab)}
+    onSelectClaimById={(id) => {
+      const found = claims.find((c) => c.id === id);
+      if (found) setSelectedClaim(found);
+    }}
+    onCloseAllModals={() => {
+      setSelectedClaim(null);
+      setIsNewClaimModalOpen(false);
+      setIsLabSimulatorOpen(false);
+    }}
+    onOpenNewClaimModal={() => setIsNewClaimModalOpen(true)}
+    onOpenLabSimulator={() => {
+      setActiveTab("lab-vault");
+      setIsLabSimulatorOpen(true);
+    }}
+  />
     </div>;
 }
 export {

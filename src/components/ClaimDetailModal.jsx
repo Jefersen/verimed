@@ -12,10 +12,14 @@ import {
   Building2,
   HelpCircle,
   Copy,
-  Check
+  Check,
+  Sparkles,
+  Cpu,
+  RefreshCw
 } from "lucide-react";
 import { motion } from "motion/react";
 import { buildClaimLeaves, verifySealLeaves } from "../utils/crypto";
+import { generateAiClaimReasoning } from "../utils/rules";
 const ClaimDetailModal = ({
   claim,
   currentUser,
@@ -30,6 +34,14 @@ const ClaimDetailModal = ({
   const [reviewerNote, setReviewerNote] = useState("");
   const [clarificationText, setClarificationText] = useState("");
   const [copiedHash, setCopiedHash] = useState(null);
+  const [isAiScanning, setIsAiScanning] = useState(false);
+  const aiReasoning = generateAiClaimReasoning(claim);
+  const handleRunAiScan = () => {
+    setIsAiScanning(true);
+    setTimeout(() => {
+      setIsAiScanning(false);
+    }, 650);
+  };
   const contentInnerRef = useRef(null);
   const [contentHeight, setContentHeight] = useState("auto");
   const [isHeightAnimating, setIsHeightAnimating] = useState(false);
@@ -171,6 +183,7 @@ const ClaimDetailModal = ({
           </div>
 
           <button
+    data-tour="modal-close-btn"
     onClick={onClose}
     className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
   >
@@ -200,6 +213,7 @@ const ClaimDetailModal = ({
     const isActive = activeTab === tab.id;
     return <button
       key={tab.id}
+      data-tour={`modal-tab-${tab.id}`}
       onClick={() => setActiveTab(tab.id)}
       className={`relative py-2 px-3.5 rounded-xl text-xs font-semibold whitespace-nowrap flex items-center gap-2 transition-colors z-10 ${isActive ? "text-emerald-950 font-bold" : "text-slate-600 hover:text-slate-900"}`}
     >
@@ -280,6 +294,62 @@ const ClaimDetailModal = ({
                 </div>
               </div>
 
+              {/* Dedicated AI Co-Pilot Reasoning & Forensic Explanation Card */}
+              <div data-tour="modal-ai-card" className="p-4 sm:p-5 rounded-2xl bg-slate-50/90 border border-slate-200/90 space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2.5 border-b border-slate-200/70">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#0E947A] text-white flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="text-xs sm:text-sm font-bold text-slate-900">
+                          Diagnosis & Penjelasan AI (VeriMed AI Co-Pilot)
+                        </h4>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-[#0E947A] border border-emerald-200">
+                          {aiReasoning.badgeText}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500">
+                        Analisis otomatis alasan ketidakwajaran segel, bukti lab LIS, dan kepatuhan tarif INA-CBG
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    data-tour="modal-ai-reanalyze-btn"
+                    onClick={handleRunAiScan}
+                    disabled={isAiScanning}
+                    className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-[#0E947A] ${isAiScanning ? "animate-spin" : ""}`} />
+                    <span>{isAiScanning ? "AI Sedang Menganalisis..." : "Analisis Ulang AI"}</span>
+                  </button>
+                </div>
+
+                <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                  {aiReasoning.summary}
+                </p>
+
+                <div className="space-y-2.5">
+                  {aiReasoning.details.map((item, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl bg-white border border-slate-200/80 space-y-1"
+                    >
+                      <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <Cpu className="w-3.5 h-3.5 text-[#0E947A] shrink-0" />
+                        <span>{item.title}</span>
+                      </p>
+                      <p className="text-xs text-slate-600 leading-relaxed pl-5">
+                        {item.text}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               {
     /* Findings List */
   }
@@ -299,12 +369,12 @@ const ClaimDetailModal = ({
                     </p>
                   </div> : claim.findings.map((finding) => <div
     key={finding.id}
-    className={`p-4 rounded-xl border text-left space-y-3 ${finding.ruleId === "R-SEAL" ? "bg-rose-50/50 border-rose-300" : finding.type === "upcoding" ? "bg-amber-50/40 border-amber-200" : "bg-blue-50/40 border-blue-200"}`}
+    className="p-4 rounded-xl border border-slate-200 bg-white text-left space-y-3"
   >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2">
                           <span
-    className={`px-2 py-0.5 rounded-md text-xs font-mono font-bold ${finding.ruleId === "R-SEAL" ? "bg-rose-600 text-white" : finding.type === "upcoding" ? "bg-amber-600 text-white" : "bg-blue-600 text-white"}`}
+    className={`px-2 py-0.5 rounded-md text-xs font-mono font-bold border ${finding.ruleId === "R-SEAL" ? "bg-rose-50 text-rose-700 border-rose-200" : finding.type === "upcoding" ? "bg-amber-50 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-700 border-slate-200"}`}
   >
                             {finding.ruleId}
                           </span>
@@ -312,7 +382,7 @@ const ClaimDetailModal = ({
                             {finding.title}
                           </h5>
                         </div>
-                        <span className="text-[11px] font-semibold text-slate-500 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                        <span className="text-[11px] font-semibold text-slate-500 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-200">
                           Bobot: {finding.weight}
                         </span>
                       </div>
@@ -320,6 +390,18 @@ const ClaimDetailModal = ({
                       <p className="text-xs text-slate-700 leading-relaxed">
                         {finding.description}
                       </p>
+
+                      {finding.aiExplanation && (
+                        <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-xs text-slate-800 space-y-1">
+                          <p className="font-bold text-[#0E947A] flex items-center gap-1.5 text-[11px]">
+                            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                            <span>Penjelasan AI Mengapa Ini Tidak Wajar:</span>
+                          </p>
+                          <p className="leading-relaxed text-slate-700">
+                            {finding.aiExplanation}
+                          </p>
+                        </div>
+                      )}
 
                       {
     /* Evidence Trail Box (PRD 11.3: Setiap temuan menyimpan jejak bukti) */
@@ -509,15 +591,31 @@ const ClaimDetailModal = ({
                   </span>
                 </div>
 
-                {claim.isTampered && <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs">
-                    <p className="font-bold">Alasan Ketidakcocokan:</p>
-                    <p className="mt-0.5">{claim.tamperReason}</p>
-                  </div>}
+                {claim.isTampered && (
+                  <div className="p-4 rounded-xl bg-rose-50/70 border border-rose-200 text-rose-900 text-xs space-y-2.5">
+                    <div className="flex items-center gap-2 font-bold text-rose-800">
+                      <Sparkles className="w-4 h-4 text-rose-600 shrink-0" />
+                      <span>Deteksi & Penjelasan Forensik AI (Mengapa Segel Tidak Cocok):</span>
+                    </div>
+                    <p className="text-slate-700 leading-relaxed font-medium">
+                      {aiReasoning.summary}
+                    </p>
+                    <div className="space-y-2 pt-1">
+                      {aiReasoning.details.map((d, i) => (
+                        <div key={i} className="p-2.5 rounded-lg bg-white border border-rose-200/70">
+                          <p className="font-bold text-slate-900 text-[11px]">{d.title}</p>
+                          <p className="text-slate-600 mt-0.5 leading-relaxed text-[11px]">{d.text}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-2 flex flex-wrap gap-2.5">
                   {!claim.isTampered ? <>
                       <button
     type="button"
+    data-tour="modal-btn-toggle-tamper"
     onClick={() => onToggleTamper(
       claim.id,
       true,
@@ -543,6 +641,7 @@ const ClaimDetailModal = ({
                       </button>
                     </> : <button
     type="button"
+    data-tour="modal-btn-toggle-tamper"
     onClick={() => onToggleTamper(claim.id, false)}
     className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
   >
