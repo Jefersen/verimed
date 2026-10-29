@@ -150,32 +150,32 @@ const DashboardAdminView = ({
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Periode:
             </span>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-800 font-bold text-xs">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-700 font-bold text-xs border border-slate-200/60">
               <Calendar className="w-3.5 h-3.5 text-[#0E947A]" />
               <span>1 Okt – 14 Okt</span>
             </div>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#D6F2EE]/70 text-[#0E947A] text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200/60">
               <span>Total Permintaan:</span>
-              <strong className="font-mono">{totalPeriodRequests} Klaim</strong>
+              <strong className="font-mono text-slate-900">{totalPeriodRequests} Klaim</strong>
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FEF6C7]/90 text-amber-900 text-xs font-extrabold">
-              <span>Total Harga Diminta:</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-[#0E947A] text-xs font-semibold border border-emerald-100">
+              <span>Total Nilai:</span>
               <strong className="font-mono">
                 Rp {(totalPeriodBilled / 1000000).toFixed(1)} Jt
               </strong>
             </span>
           </div>
 
-          <div className="flex items-center gap-5 text-xs font-bold text-slate-600">
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#F5DF65] inline-block" />
-              <span>Hari Dipilih</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0E947A] inline-block" />
+              <span>Hari Terpilih</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#CBEFE8] inline-block" />
-              <span>Jumlah Permintaan & Total Harga</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D6F2EE] inline-block" />
+              <span>Tren Harian</span>
             </div>
           </div>
         </div>
@@ -264,7 +264,7 @@ const DashboardAdminView = ({
                       }}
                       className={`w-full max-w-[26px] rounded-t-2xl transition-colors duration-300 ${
                         isSelected
-                          ? "bg-[#F5DF65] shadow-md shadow-amber-200/50"
+                          ? "bg-[#0E947A] shadow-md shadow-[#0E947A]/30"
                           : "bg-[#D6F2EE] group-hover:bg-[#B5E8DF]"
                       }`}
                     />
@@ -301,86 +301,82 @@ const DashboardAdminView = ({
       {/* Row 3: Investigation KPI Cards & Clinical Flag Counters */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-slate-100 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Total Klaim Masuk
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-[#D6F2EE] text-[#0E947A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
               <FileText className="w-4 h-4" />
             </div>
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {totalClaims}
           </p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Dari seluruh rumah sakit mitra
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Seluruh faskes mitra
           </p>
         </motion.div>
 
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-rose-100/80 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Klaim Risiko Tinggi
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-rose-100/80 text-rose-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
               <AlertTriangle className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-rose-600 mt-2 font-mono">
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {highRiskClaims.length}
           </p>
-          <p className="text-[11px] text-rose-700/80 font-medium mt-0.5">
-            Skor &ge; 70 atau anomali berat
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Skor &ge; 70 atau anomali
           </p>
         </motion.div>
 
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-amber-100/80 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Menunggu Klarifikasi
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-[#FEF6C7] text-amber-700 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-100">
               <Activity className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-amber-600 mt-2 font-mono">
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {clarificationClaims.length}
           </p>
-          <p className="text-[11px] text-amber-700/80 font-medium mt-0.5">
-            Menunggu berkas susulan faskes
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Menunggu berkas faskes
           </p>
         </motion.div>
 
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className={`p-4 rounded-3xl border transition-shadow hover:shadow-md ${
-            integrityCount > 0
-              ? "bg-rose-50/70 border-rose-200"
-              : "bg-slate-50/70 hover:bg-white border-emerald-100"
-          }`}
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Integritas (R-SEAL)
             </span>
             <div
-              className={`w-8 h-8 rounded-2xl flex items-center justify-center ${
+              className={`w-8 h-8 rounded-xl flex items-center justify-center ${
                 integrityCount > 0
-                  ? "bg-rose-600 text-white animate-pulse"
-                  : "bg-[#D6F2EE] text-[#0E947A]"
+                  ? "bg-rose-50 text-rose-600 border border-rose-100"
+                  : "bg-emerald-50 text-[#0E947A] border border-emerald-100"
               }`}
             >
               <ShieldAlert className="w-4 h-4" />
@@ -393,73 +389,69 @@ const DashboardAdminView = ({
           >
             {integrityCount}
           </p>
-          <p
-            className={`text-[11px] font-medium mt-0.5 ${
-              integrityCount > 0 ? "text-rose-700" : "text-[#0E947A]"
-            }`}
-          >
+          <p className="text-[11px] text-slate-400 mt-0.5">
             {integrityCount > 0
-              ? "Ketidakcocokan Merkle hash!"
+              ? "Perlu penyesuaian segel"
               : "Semua segel utuh"}
           </p>
         </motion.div>
       </div>
 
-      {/* Clinical Rule Indicators Pill Strip */}
+      {/* Clinical Rule Summary Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-        <div className="px-4 py-3.5 rounded-2xl bg-white border border-slate-100 shadow-2xs flex items-center justify-between">
+        <div className="px-4 py-3.5 rounded-2xl bg-white border border-slate-200/70 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-slate-500">
               Indikasi Upcoding (U1-U3)
             </span>
-            <p className="text-lg font-extrabold text-amber-700 mt-0.5">
+            <p className="text-lg font-bold text-slate-800 mt-0.5">
               {upcodingCount} Kasus
             </p>
             <p className="text-[11px] text-slate-400">
-              Diagnosis berat tanpa bukti lab/terapi
+              Diagnosis berat tanpa bukti klinis
             </p>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-[#FEF6C7] text-amber-800 flex items-center justify-center font-extrabold text-xs">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs border border-slate-200/60">
             U1-3
           </div>
         </div>
 
-        <div className="px-4 py-3.5 rounded-2xl bg-white border border-slate-100 shadow-2xs flex items-center justify-between">
+        <div className="px-4 py-3.5 rounded-2xl bg-white border border-slate-200/70 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-slate-500">
               Indikasi Unbundling (B1-B3)
             </span>
-            <p className="text-lg font-extrabold text-teal-700 mt-0.5">
+            <p className="text-lg font-bold text-slate-800 mt-0.5">
               {unbundlingCount} Kasus
             </p>
             <p className="text-[11px] text-slate-400">
               Item paket ditagihkan terpisah
             </p>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-[#D6F2EE] text-[#0E947A] flex items-center justify-center font-extrabold text-xs">
+          <div className="w-9 h-9 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs border border-slate-200/60">
             B1-3
           </div>
         </div>
 
-        <div className="px-4 py-3.5 rounded-2xl bg-white border border-slate-100 shadow-2xs flex items-center justify-between">
+        <div className="px-4 py-3.5 rounded-2xl bg-white border border-slate-200/70 shadow-2xs flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold text-slate-500">
               Fast-Track Auto-Approval
             </span>
-            <p className="text-lg font-extrabold text-[#0E947A] mt-0.5">
+            <p className="text-lg font-bold text-slate-800 mt-0.5">
               {claims.filter((c) => c.fastTrack).length} Kasus
             </p>
             <p className="text-[11px] text-slate-400">
               Segel utuh & skor risiko &lt; 30
             </p>
           </div>
-          <div className="w-10 h-10 rounded-2xl bg-[#D6F2EE] text-[#0E947A] flex items-center justify-center">
-            <CheckCircle2 className="w-5 h-5" />
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-[#0E947A] flex items-center justify-center border border-emerald-100">
+            <CheckCircle2 className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      {/* Row 4: PinHome Split Bottom Section */}
+      {/* Row 4: Split Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
         <div className="lg:col-span-8">
           <div className="flex items-center justify-between mb-4">
@@ -467,130 +459,107 @@ const DashboardAdminView = ({
               <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
                 Antrean Prioritas Verifikasi Klaim
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
-                Prioritas Risiko
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200/60">
+                Prioritas Telaah
               </span>
             </div>
 
             <button
               type="button"
               onClick={handleGoQueue}
-              className="text-xs font-extrabold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group"
+              className="text-xs font-bold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group"
             >
               <span>Buka Seluruh Antrean</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100">
+          <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs divide-y divide-slate-100 overflow-hidden">
             {priorityQueue.map((claim, idx) => {
-              const isHigh = claim.isTampered || claim.riskBand === "Tinggi";
-              const isMed = claim.riskBand === "Sedang" && !claim.isTampered;
+              // Exactly 1 single primary indicator badge per record (No rainbow clutter!)
+              const singleStatusBadge = claim.isTampered
+                ? { label: "Segel Tidak Cocok", cls: "bg-rose-50 text-rose-700 border-rose-200" }
+                : claim.status === "klarifikasi"
+                  ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
+                  : claim.status === "disetujui"
+                    ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                    : claim.fastTrack
+                      ? { label: "Fast-Track", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                      : { label: "Menunggu Telaah", cls: "bg-slate-50 text-slate-600 border-slate-200" };
 
               return (
                 <motion.div
                   key={claim.id}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.05, duration: 0.3 }}
-                  whileHover={{ x: 4 }}
+                  transition={{ delay: idx * 0.04, duration: 0.25 }}
                   onClick={() => onSelectClaim(claim)}
-                  className="py-4 px-2 hover:bg-slate-50/70 rounded-2xl transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  className="p-4 hover:bg-slate-50/70 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
                 >
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div
-                      className={`w-12 h-12 rounded-full flex flex-col items-center justify-center shrink-0 relative overflow-hidden shadow-2xs ${
-                        isHigh
-                          ? "bg-rose-100 text-rose-800"
-                          : isMed
-                            ? "bg-[#FEF6C7] text-amber-900"
-                            : "bg-[#D6F2EE] text-[#0E947A]"
-                      }`}
-                    >
-                      <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-white/40" />
-                      <span className="text-sm font-black leading-none relative z-10 font-mono">
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Clean unified score avatar */}
+                    <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-xs font-black font-mono leading-none">
                         {claim.riskScore}
                       </span>
-                      <span className="text-[8px] font-extrabold uppercase tracking-tighter mt-0.5 relative z-10">
-                        {claim.riskBand}
+                      <span className="text-[8px] font-semibold text-slate-400 uppercase tracking-tighter mt-0.5">
+                        Skor
                       </span>
                     </div>
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-extrabold text-slate-900 group-hover:text-[#0E947A] transition-colors truncate">
-                          {claim.primaryDiagnosis.name}
-                        </p>
-                        {claim.isTampered && (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-rose-600 text-white animate-pulse">
-                            SEGEL RUSAK
-                          </span>
-                        )}
-                        {claim.fastTrack && (
-                          <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-[#D6F2EE] text-[#0E947A]">
-                            FAST-TRACK
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-slate-400 mt-0.5 truncate">
-                        <span className="font-mono font-semibold text-slate-600">
-                          #{claim.claimNumber}
-                        </span>{" "}
-                        • {claim.facilityName} • {claim.inacbgCode} (Sev{" "}
-                        {claim.severity})
+                      <p className="text-sm font-bold text-slate-900 group-hover:text-[#0E947A] transition-colors truncate">
+                        {claim.primaryDiagnosis.name}
                       </p>
 
-                      <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                        {claim.findings.map((f) => (
-                          <span
-                            key={f.id}
-                            className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${
-                              f.ruleId === "R-SEAL"
-                                ? "bg-rose-100 text-rose-800"
-                                : f.type === "upcoding"
-                                  ? "bg-[#FEF6C7] text-amber-900"
-                                  : "bg-[#D6F2EE]/70 text-[#0E947A]"
-                            }`}
-                          >
-                            <strong>{f.ruleId}:</strong> {f.title.split("(")[0]}
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                        <span className="font-mono font-medium text-slate-600">
+                          #{claim.claimNumber}
+                        </span>{" "}
+                        • {claim.facilityName} • {claim.inacbgCode}
+                      </p>
+
+                      {/* Calm, readable single-line summary (No multiple colored chips!) */}
+                      <p className="text-[11px] text-slate-400 mt-1 truncate">
+                        {claim.isTampered ? (
+                          <span className="text-rose-600 font-medium flex items-center gap-1">
+                            <ShieldAlert className="w-3.5 h-3.5" />
+                            Segel hash berbeda dari berkas asli vault
                           </span>
-                        ))}
-                        {claim.findings.length === 0 && (
-                          <span className="text-[10px] text-[#0E947A] font-semibold flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Lolos aturan klinis
+                        ) : claim.findings.length > 0 ? (
+                          <span className="text-slate-500 font-medium">
+                            {claim.findings.length} Indikasi Telaah:{" "}
+                            {claim.findings.map((f) => f.ruleId).join(", ")}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-700 font-medium flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            Lolos kepatuhan klinis & segel utuh
                           </span>
                         )}
-                      </div>
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-5 shrink-0">
+                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 sm:pl-3 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                    {/* The 1 single primary indicator badge */}
                     <span
-                      className={`px-3 py-1 rounded-lg text-[11px] font-bold capitalize ${
-                        claim.status === "disetujui"
-                          ? "bg-[#D6F2EE] text-[#0E947A]"
-                          : claim.status === "ditelaah" ||
-                              claim.status === "klarifikasi"
-                            ? "bg-[#FEF6C7] text-amber-800"
-                            : "bg-slate-100 text-slate-600"
-                      }`}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${singleStatusBadge.cls}`}
                     >
-                      {claim.status.replace("_", " ")}
+                      {singleStatusBadge.label}
                     </span>
 
-                    <div className="text-right min-w-[95px]">
-                      <p className="text-xs font-extrabold text-slate-900 font-mono">
+                    <div className="text-right min-w-[90px]">
+                      <p className="text-xs font-bold text-slate-900 font-mono">
                         Rp {claim.billedAmount.toLocaleString("id-ID")}
                       </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[10px] text-slate-400 mt-0.5">
                         {claim.losDays} hari rawat
                       </p>
                     </div>
 
-                    <div className="p-1.5 rounded-full text-slate-300 group-hover:text-[#0E947A] group-hover:bg-[#D6F2EE]/40 transition-colors">
-                      <MoreVertical className="w-4 h-4" />
+                    <div className="text-slate-300 group-hover:text-[#0E947A] transition-colors">
+                      <ArrowRight className="w-4 h-4" />
                     </div>
                   </div>
                 </motion.div>
@@ -599,91 +568,42 @@ const DashboardAdminView = ({
           </div>
         </div>
 
-        {/* Right Column (4 cols): PinHome Illustrated Pastel Card */}
+        {/* Right Column (4 cols): Calm, Professional Highlight Card */}
         <div className="lg:col-span-4">
-          <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ type: "spring", stiffness: 280, damping: 22 }}
-            className="rounded-[32px] bg-[#D6F2EE] p-6 sm:p-7 relative overflow-hidden min-h-[300px] flex flex-col justify-between shadow-xs"
-          >
-            <div className="relative z-10 max-w-[230px]">
-              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[#0E947A] bg-white/70 px-2.5 py-1 rounded-full mb-3">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xs">
+            <div className="relative z-10">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#0E947A] bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full mb-3">
                 <Sparkles className="w-3 h-3" /> Analitik & Kriptografi
               </span>
-              <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
-                Wawasan Data & Rantai Segel!
+              <h3 className="text-base font-bold text-slate-900 leading-snug">
+                Wawasan Data & Rantai Segel
               </h3>
-              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
-                Telusuri benchmark 1,69 Juta kunjungan nasional BPJS atau uji
-                ketahanan blok Merkle Tree Ed25519.
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Telusuri data sampel 1,69 juta kunjungan BPJS Kesehatan atau uji
+                integritas segel Merkle Tree Ed25519.
               </p>
 
-              <div className="mt-5 flex flex-wrap items-center gap-2.5">
-                <motion.button
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.96 }}
                   onClick={onGoToInsights}
-                  className="px-5 py-2.5 rounded-full bg-[#F5DF65] hover:bg-[#FACC15] text-slate-900 font-extrabold text-xs shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[#0E947A] hover:bg-[#0B7A64] text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span>Wawasan</span>
-                </motion.button>
+                  <span>Wawasan Nasional</span>
+                </button>
 
-                <motion.button
+                <button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.96 }}
                   onClick={onGoToAuditChain}
-                  className="px-4 py-2.5 rounded-full bg-white/80 hover:bg-white text-[#0E947A] font-extrabold text-xs shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-colors cursor-pointer flex items-center gap-1.5"
                 >
-                  <LinkIcon className="w-3.5 h-3.5" />
+                  <LinkIcon className="w-3.5 h-3.5 text-slate-500" />
                   <span>Rantai Audit</span>
-                </motion.button>
+                </button>
               </div>
             </div>
-
-            <svg
-              viewBox="0 0 260 150"
-              className="w-full h-36 absolute bottom-0 right-0 left-0 pointer-events-none"
-              fill="none"
-            >
-              <path
-                d="M140 150 L140 120 L170 120 L170 95 L200 95 L200 70 L230 70 L230 45 L260 45 L260 150 Z"
-                fill="#F6B8C6"
-              />
-              <path
-                d="M215 95 C216 65 220 45 222 28"
-                stroke="#0B6B58"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <path
-                d="M222 28 C205 20 192 28 188 36 C200 34 212 32 222 28 Z"
-                fill="#0E947A"
-              />
-              <path
-                d="M222 28 C236 16 250 22 256 32 C244 30 232 28 222 28 Z"
-                fill="#0E947A"
-              />
-              <path
-                d="M222 28 C208 36 198 48 196 56 C208 48 216 38 222 28 Z"
-                fill="#0B6B58"
-              />
-              <path
-                d="M15 150 C15 118 35 98 52 90 C48 115 38 135 28 150 Z"
-                fill="#0B6B58"
-              />
-              <path
-                d="M32 150 C42 115 68 96 92 92 C78 118 62 136 46 150 Z"
-                fill="#0E947A"
-              />
-              <path
-                d="M52 150 C72 126 98 116 122 118 C102 134 82 144 65 150 Z"
-                fill="#14B897"
-              />
-            </svg>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

@@ -313,120 +313,130 @@ const ClaimsListView = ({
     transition={{ duration: 0.2, ease: "easeOut" }}
     className="divide-y divide-slate-100"
   >
-              {filteredClaims.map((claim) => <div
-    key={claim.id}
-    onClick={() => onSelectClaim(claim)}
-    className="p-4 sm:p-5 hover:bg-slate-50/70 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
-  >
-                {
-    /* Left block: Details */
-  }
-                <div className="flex items-start gap-4">
-                  {
-    /* Left Badge: Risk Score for Admin; File Icon / Version for Faskes */
-  }
-                  {isAdmin ? <div
-    className={`w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 border transition-transform group-hover:scale-105 ${claim.isTampered || claim.riskBand === "Tinggi" ? "bg-rose-50 border-rose-200 text-rose-700" : claim.riskBand === "Sedang" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-emerald-50 border-emerald-200 text-emerald-800"}`}
-  >
-                      <span className="text-base font-black leading-none">{claim.riskScore}</span>
-                      <span className="text-[9px] font-bold uppercase tracking-tighter mt-0.5">
-                        {claim.riskBand}
-                      </span>
-                    </div> : <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center shrink-0 border border-slate-200 bg-slate-50 text-slate-700">
-                      <FileText className="w-5 h-5 text-emerald-600 mb-0.5" />
-                      <span className="text-[9px] font-bold font-mono">V{claim.currentVersion}</span>
-                    </div>}
+              {filteredClaims.map((claim) => {
+                // Exactly 1 single primary indicator badge per row (No rainbow clutter!)
+                const singleStatusBadge = claim.isTampered
+                  ? { label: "Segel Tidak Cocok", cls: "bg-rose-50 text-rose-700 border-rose-200" }
+                  : claim.status === "klarifikasi"
+                    ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
+                    : claim.status === "disetujui"
+                      ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                      : claim.status === "ditelaah"
+                        ? { label: "Ditelaah", cls: "bg-sky-50 text-sky-700 border-sky-200" }
+                        : claim.fastTrack
+                          ? { label: "Fast-Track", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                          : { label: "Menunggu Telaah", cls: "bg-slate-50 text-slate-600 border-slate-200" };
 
-                  <div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-slate-900 group-hover:text-emerald-700 font-mono">
-                        #{claim.claimNumber}
-                      </span>
-                      {isAdmin && <>
-                          <span className="text-xs text-slate-400">•</span>
-                          <span className="text-xs text-slate-600 flex items-center gap-1 font-medium">
-                            <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                            {claim.facilityName}
+                return (
+                  <div
+                    key={claim.id}
+                    onClick={() => onSelectClaim(claim)}
+                    className="p-4 sm:p-5 hover:bg-slate-50/70 transition-all cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                  >
+                    {/* Left block: Details */}
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      {/* Left Clean Score/Version Box */}
+                      {isAdmin ? (
+                        <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-800 flex flex-col items-center justify-center shrink-0">
+                          <span className="text-xs font-black font-mono leading-none">
+                            {claim.riskScore}
                           </span>
-                        </>}
+                          <span className="text-[8px] font-semibold text-slate-400 uppercase tracking-tighter mt-0.5">
+                            Skor
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex flex-col items-center justify-center shrink-0 font-mono">
+                          <span className="text-xs font-bold leading-none">
+                            V{claim.currentVersion}
+                          </span>
+                          <span className="text-[8px] font-semibold text-slate-400 uppercase tracking-tighter mt-0.5">
+                            Versi
+                          </span>
+                        </div>
+                      )}
 
-                      {
-    /* Seal status indicator */
-  }
-                      {claim.isTampered ? <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white flex items-center gap-1 animate-pulse">
-                          <ShieldAlert className="w-3 h-3" />
-                          {isAdmin ? "SEGEL TIDAK COCOK" : "Segel Integritas Bermasalah"}
-                        </span> : <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100/80 text-emerald-800 flex items-center gap-1">
-                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                          Segel Utuh
-                        </span>}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-900 group-hover:text-[#0E947A] font-mono">
+                            #{claim.claimNumber}
+                          </span>
+                          {isAdmin && (
+                            <>
+                              <span className="text-xs text-slate-300">•</span>
+                              <span className="text-xs text-slate-500 flex items-center gap-1 font-medium">
+                                <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                                {claim.facilityName}
+                              </span>
+                            </>
+                          )}
+                        </div>
 
-                      {claim.currentVersion > 1 && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                          Revisi V{claim.currentVersion}
-                        </span>}
+                        {/* Patient & Diagnosis */}
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="text-sm font-bold text-slate-900">
+                            {claim.primaryDiagnosis.name}
+                          </span>
+                          <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
+                            {claim.primaryDiagnosis.code}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            • INA-CBG: <strong className="text-slate-600 font-mono">{claim.inacbgCode}</strong> (Sev {claim.severity})
+                          </span>
+                        </div>
 
-                      {claim.status === "klarifikasi" && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-200">
-                          Perlu Klarifikasi
-                        </span>}
+                        {/* Clean textual summary (No multiple colored badge tags!) */}
+                        <p className="text-[11px] text-slate-400 mt-1 truncate">
+                          {claim.isTampered ? (
+                            <span className="text-rose-600 font-medium flex items-center gap-1">
+                              <ShieldAlert className="w-3.5 h-3.5" />
+                              Segel hash tidak cocok dengan berkas vault
+                            </span>
+                          ) : isAdmin ? (
+                            claim.findings.length > 0 ? (
+                              <span className="text-slate-500 font-medium">
+                                {claim.findings.length} Catatan Telaah:{" "}
+                                {claim.findings.map((f) => f.ruleId).join(", ")}
+                              </span>
+                            ) : (
+                              <span className="text-emerald-700 font-medium flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Lolos aturan klinis & segel utuh
+                              </span>
+                            )
+                          ) : (
+                            <span>
+                              Rawat: {claim.admitDate} s/d {claim.dischargeDate} ({claim.losDays} hari) • Segel kriptografis utuh
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
 
-                    {
-    /* Patient & Diagnosis */
-  }
-                    <div className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="text-sm font-bold text-slate-800">
-                        {claim.primaryDiagnosis.name}
-                      </span>
-                      <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-md">
-                        {claim.primaryDiagnosis.code}
-                      </span>
-                      <span className="text-xs text-slate-500">
-                        (INA-CBG: <strong className="text-slate-700 font-mono">{claim.inacbgCode}</strong> • Sev {claim.severity})
-                      </span>
-                    </div>
+                    {/* Right block: Exactly 1 primary status badge + Amount + Arrow */}
+                    <div className="flex items-center justify-between md:justify-end gap-4 shrink-0 md:text-right border-t md:border-t-0 pt-2.5 md:pt-0 border-slate-100">
+                      <div className="flex flex-col md:items-end">
+                        <span
+                          className={`self-start md:self-end px-2.5 py-0.5 rounded-lg text-[10px] font-semibold border mb-1 ${singleStatusBadge.cls}`}
+                        >
+                          {singleStatusBadge.label}
+                        </span>
 
-                    {
-    /* Findings & Evidence Badges (Admin) or Clinical note (Faskes) */
-  }
-                    <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                      {isAdmin ? claim.findings.length > 0 ? claim.findings.map((finding) => <span
-    key={finding.id}
-    className={`text-[10px] font-medium px-2 py-0.5 rounded-md border flex items-center gap-1 ${finding.ruleId === "R-SEAL" ? "bg-rose-100 text-rose-800 border-rose-300" : finding.type === "upcoding" ? "bg-amber-50 text-amber-900 border-amber-200" : "bg-blue-50 text-blue-900 border-blue-200"}`}
-  >
-                              <strong>{finding.ruleId}:</strong> {finding.title.split("(")[0]}
-                            </span>) : <span className="text-[10px] text-emerald-700 font-medium flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                            Semua aturan klinis dan integritas segel lolos verifikasi
-                          </span> : <span className="text-[11px] text-slate-500">
-                          Tgl Masuk: <strong className="text-slate-700">{claim.admitDate}</strong> • Keluar: <strong className="text-slate-700">{claim.dischargeDate}</strong> ({claim.losDays} hari) • {claim.items.length} rincian item tindakan
-                        </span>}
+                        <p className="text-xs font-bold text-slate-900 font-mono">
+                          Rp {claim.billedAmount.toLocaleString("id-ID")}
+                        </p>
+                        <p className="text-[10px] text-slate-400">
+                          {claim.losDays} hari rawat
+                        </p>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-slate-50 group-hover:bg-[#0E947A] group-hover:text-white text-slate-400 transition-colors">
+                        <ArrowRight className="w-4 h-4" />
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {
-    /* Right block: Amount & Action */
-  }
-                <div className="flex items-center justify-between md:justify-end gap-5 shrink-0 md:text-right border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
-                  <div>
-                    <p className="text-xs text-slate-400">Total Tagihan Billed</p>
-                    <p className="text-sm font-extrabold text-slate-900">
-                      Rp {claim.billedAmount.toLocaleString("id-ID")}
-                    </p>
-                    <div className="mt-0.5">
-                      <span
-    className={`inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${claim.status === "disetujui" ? "bg-emerald-100 text-emerald-800" : claim.status === "ditelaah" ? "bg-amber-100 text-amber-800" : claim.status === "klarifikasi" ? "bg-blue-100 text-blue-800" : "bg-slate-100 text-slate-700"}`}
-  >
-                        {claim.status.replace("_", " ")}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded-xl bg-slate-50 group-hover:bg-emerald-600 group-hover:text-white text-slate-600 transition-colors">
-                    <ArrowRight className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>)}
+                );
+              })}
             </motion.div>}
         </AnimatePresence>
       </div>

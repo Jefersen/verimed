@@ -9,8 +9,65 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3e3;
+
+// HTTP Security Headers
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https:;"
+  );
+  next();
+});
+
 app.use(express.json());
-const APP_SECRET = process.env.APP_SECRET || "verimed-healthkathon-secret-key-2026-auth";
+
+// In-memory rate limiter for sensitive AI & Auth endpoints
+const rateLimitMap = new Map();
+function aiRateLimiter(req, res, next) {
+  const clientIp = req.ip || req.headers["x-forwarded-for"] || req.socket.remoteAddress || "127.0.0.1";
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const maxRequests = 45;
+
+  const record = rateLimitMap.get(clientIp) || { count: 0, resetTime: now + windowMs };
+  if (now > record.resetTime) {
+    record.count = 1;
+    record.resetTime = now + windowMs;
+  } else {
+    record.count++;
+  }
+  rateLimitMap.set(clientIp, record);
+
+  if (record.count > maxRequests) {
+    return res.status(429).json({
+      error: "Terlalu Banyak Permintaan (429 Too Many Requests)",
+      message: "Batas permintaan ke API tercapai. Harap tunggu sesaat sebelum mencoba kembali."
+    });
+  }
+  next();
+}
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, record] of rateLimitMap.entries()) {
+    if (now > record.resetTime) {
+      rateLimitMap.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+
+app.use("/api/settings/ai", aiRateLimiter);
+app.use("/api/auth", aiRateLimiter);
+
+const APP_SECRET = process.env.APP_SECRET || (() => {
+  const randomSecret = crypto.randomBytes(32).toString("hex");
+  console.warn("[Security] APP_SECRET tidak ditemukan di environment. Menggunakan 256-bit cryptographically random ephemeral secret.");
+  return randomSecret;
+})();
 const ENCRYPTION_KEY = crypto.createHash("sha256").update(APP_SECRET).digest();
 function encryptApiKey(text) {
   const iv = crypto.randomBytes(12);
@@ -39,6 +96,35 @@ let aiConfig = {
   mode: envGeminiKey ? "ai" : "fallback",
   availableModels: envGeminiKey ? ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"] : []
 };
+function validateBaseUrl(inputUrl, defaultUrl = "http://localhost:11434/v1") {
+  if (!inputUrl || typeof inputUrl !== "string" || !inputUrl.trim()) {
+    return { valid: true, url: defaultUrl };
+  }
+  try {
+    const parsed = new URL(inputUrl.trim());
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      return { valid: false, error: "Protokol tidak diizinkan. Hanya http dan https yang didukung." };
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    const blockedHosts = [
+      "169.254.169.254",
+      "metadata.google.internal",
+      "metadata.goog",
+      "instance-data",
+      "100.100.100.200"
+    ];
+    if (blockedHosts.includes(hostname)) {
+      return { valid: false, error: "Akses ke layanan metadata internal diblokir oleh kebijakan keamanan." };
+    }
+    if (hostname === "0.0.0.0" || hostname === "[::]" || hostname === "0") {
+      return { valid: false, error: "Alamat host target tidak valid." };
+    }
+    return { valid: true, url: parsed.origin + parsed.pathname.replace(/\/+$/, "") };
+  } catch {
+    return { valid: false, error: "Format URL tidak valid." };
+  }
+}
+
 async function fetchProviderModels(provider, apiKey, baseUrl) {
   try {
     const controller = new AbortController();
@@ -131,7 +217,11 @@ async function fetchProviderModels(provider, apiKey, baseUrl) {
       return { success: true, models: models.length ? models : ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022"] };
     }
     if (provider === "compat") {
-      const endpoint = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/models` : "http://localhost:11434/v1/models";
+      const urlCheck = validateBaseUrl(baseUrl, "http://localhost:11434/v1");
+      if (!urlCheck.valid) {
+        return { success: false, error: urlCheck.error };
+      }
+      const endpoint = `${urlCheck.url}/models`;
       const res = await fetch(endpoint, {
         headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
         signal: controller.signal
@@ -195,7 +285,14 @@ async function testModelLive(provider, apiKey, model, baseUrl) {
       };
     }
     if (provider === "openai") {
-      const url = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/chat/completions` : "https://api.openai.com/v1/chat/completions";
+      let url = "https://api.openai.com/v1/chat/completions";
+      if (baseUrl) {
+        const urlCheck = validateBaseUrl(baseUrl, "https://api.openai.com/v1");
+        if (!urlCheck.valid) {
+          return { success: false, error: urlCheck.error };
+        }
+        url = `${urlCheck.url}/chat/completions`;
+      }
       const res = await fetch(url, {
         method: "POST",
         headers: {
@@ -252,7 +349,11 @@ async function testModelLive(provider, apiKey, model, baseUrl) {
       return { success: true, latencyMs, outputSnippet: text };
     }
     if (provider === "compat") {
-      const endpoint = baseUrl ? `${baseUrl.replace(/\/+$/, "")}/chat/completions` : "http://localhost:11434/v1/chat/completions";
+      const urlCheck = validateBaseUrl(baseUrl, "http://localhost:11434/v1");
+      if (!urlCheck.valid) {
+        return { success: false, error: urlCheck.error };
+      }
+      const endpoint = `${urlCheck.url}/chat/completions`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -282,15 +383,67 @@ async function testModelLive(provider, apiKey, model, baseUrl) {
     return { success: false, error: `Gagal memanggil API: ${err.message}` };
   }
 }
-function requireAdmin(req, res, next) {
-  const role = req.headers["x-user-role"];
+
+function generateAuthToken(payload) {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = crypto.createHmac("sha256", ENCRYPTION_KEY).update(`${header}.${body}`).digest("base64url");
+  return `${header}.${body}.${signature}`;
+}
+
+function verifyAuthToken(token) {
+  if (!token || typeof token !== "string") return null;
+  const parts = token.split(".");
+  if (parts.length !== 3) return null;
+  const [header, body, signature] = parts;
+  const expectedSignature = crypto.createHmac("sha256", ENCRYPTION_KEY).update(`${header}.${body}`).digest("base64url");
+  const sigBuf = Buffer.from(signature);
+  const expBuf = Buffer.from(expectedSignature);
+  if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString());
+    if (payload.exp && Date.now() > payload.exp) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+app.post("/api/auth/token", (req, res) => {
+  const { role = "admin", email = "admin@verimed.id", userId = "USR-ADMIN-01" } = req.body || {};
   if (role !== "admin") {
     return res.status(403).json({
-      error: "Akses Ditolak (403 Forbidden)",
-      message: "Hanya peran Admin & Verifikator yang memiliki izin mengakses data/pengaturan ini."
+      error: "Akses Ditolak",
+      message: "Hanya peran Admin & Verifikator yang dapat memperoleh token otorisasi administrasi."
     });
   }
-  next();
+  const token = generateAuthToken({ role: "admin", email, userId });
+  res.json({ token, expiresIn: 86400 });
+});
+
+function requireAdmin(req, res, next) {
+  const authHeader = req.headers["authorization"] || req.headers["x-auth-token"];
+  let token = "";
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    token = authHeader.slice(7).trim();
+  } else if (authHeader) {
+    token = authHeader.trim();
+  }
+
+  if (token) {
+    const payload = verifyAuthToken(token);
+    if (payload && payload.role === "admin") {
+      req.user = payload;
+      return next();
+    }
+  }
+
+  return res.status(403).json({
+    error: "Akses Ditolak (403 Forbidden)",
+    message: "Akses ditolak. Token otorisasi Admin & Verifikator yang valid diperlukan."
+  });
 }
 app.get("/api/settings/ai", requireAdmin, (req, res) => {
   res.json({

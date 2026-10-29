@@ -130,20 +130,20 @@ const DashboardFaskesView = ({
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
-          className="p-4 sm:p-5 rounded-3xl bg-[#FEF6C7]/70 border border-amber-200/80 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          className="p-4 sm:p-5 rounded-2xl bg-amber-50/80 border border-amber-200/70 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-[#F5DF65] text-slate-900 flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 border border-amber-200/60">
               <MessageSquare className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm font-extrabold text-slate-900">
+                <h3 className="text-sm font-bold text-slate-900">
                   Tindakan Diperlukan: {clarificationClaims.length} Klaim
                   Membutuhkan Klarifikasi
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200/80 text-amber-900">
-                  Permintaan Admin
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800">
+                  Permintaan Verifikator
                 </span>
               </div>
               <p className="text-xs text-slate-600 mt-0.5">
@@ -155,10 +155,10 @@ const DashboardFaskesView = ({
 
           <motion.button
             type="button"
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleClarification}
-            className="px-4 py-2 rounded-full bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-xs self-start sm:self-auto cursor-pointer"
+            className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors shrink-0 flex items-center gap-1.5 shadow-2xs self-start sm:self-auto cursor-pointer"
           >
             <span>Buka Daftar Klarifikasi</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -178,32 +178,32 @@ const DashboardFaskesView = ({
             <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Periode:
             </span>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-800 font-bold text-xs">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-700 font-bold text-xs border border-slate-200/60">
               <Calendar className="w-3.5 h-3.5 text-[#0E947A]" />
               <span>1 Okt – 14 Okt</span>
             </div>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#D6F2EE]/70 text-[#0E947A] text-xs font-extrabold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-200/60">
               <span>Total Permintaan:</span>
-              <strong className="font-mono">{totalPeriodRequests} Klaim</strong>
+              <strong className="font-mono text-slate-900">{totalPeriodRequests} Klaim</strong>
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FEF6C7]/90 text-amber-900 text-xs font-extrabold">
-              <span>Total Harga Diminta:</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 text-[#0E947A] text-xs font-semibold border border-emerald-100">
+              <span>Total Nilai:</span>
               <strong className="font-mono">
                 Rp {(totalPeriodBilled / 1000000).toFixed(1)} Jt
               </strong>
             </span>
           </div>
 
-          <div className="flex items-center gap-5 text-xs font-bold text-slate-600">
+          <div className="flex items-center gap-4 text-xs font-medium text-slate-500">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#F5DF65] inline-block" />
-              <span>Hari Dipilih</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#0E947A] inline-block" />
+              <span>Hari Terpilih</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#CBEFE8] inline-block" />
-              <span>Jumlah Permintaan & Total Harga</span>
+              <span className="w-2.5 h-2.5 rounded-full bg-[#D6F2EE] inline-block" />
+              <span>Tren Harian</span>
             </div>
           </div>
         </div>
@@ -287,7 +287,7 @@ const DashboardFaskesView = ({
                       }}
                       className={`w-full max-w-[26px] rounded-t-2xl transition-colors duration-300 ${
                         isSelected
-                          ? "bg-[#F5DF65] shadow-md shadow-amber-200/50"
+                          ? "bg-[#0E947A] shadow-md shadow-[#0E947A]/30"
                           : "bg-[#D6F2EE] group-hover:bg-[#B5E8DF]"
                       }`}
                     />
@@ -323,96 +323,93 @@ const DashboardFaskesView = ({
       {/* Row 3: Faskes Operational Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-slate-100 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Total Klaim Diajukan
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-[#D6F2EE] text-[#0E947A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center">
               <FileText className="w-4 h-4" />
             </div>
           </div>
           <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {totalSubmitted}
           </p>
-          <p className="text-[11px] text-slate-500 mt-0.5 truncate">
-            Billed:{" "}
-            <strong className="text-slate-800">
-              Rp {totalBilled.toLocaleString("id-ID")}
-            </strong>
+          <p className="text-[11px] text-slate-400 mt-0.5 truncate">
+            Billed: Rp {totalBilled.toLocaleString("id-ID")}
           </p>
         </motion.div>
 
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-slate-100 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Sedang Diproses
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-sky-100/80 text-sky-700 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center border border-slate-200/60">
               <Clock className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-sky-600 mt-2 font-mono">
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {inProcessClaims.length}
           </p>
-          <p className="text-[11px] text-slate-500 mt-0.5">
-            Dalam antrean verifikator BPJS
+          <p className="text-[11px] text-slate-400 mt-0.5">
+            Dalam antrean verifikator
           </p>
         </motion.div>
 
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-amber-100/80 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Butuh Klarifikasi
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-[#FEF6C7] text-amber-700 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-100">
               <AlertCircle className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-amber-600 mt-2 font-mono">
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {clarificationClaims.length}
           </p>
-          <p className="text-[11px] text-amber-700/80 font-medium mt-0.5">
+          <p className="text-[11px] text-slate-400 mt-0.5">
             {clarificationClaims.length > 0
-              ? "Menunggu tanggapan faskes"
-              : "Semua klaim tertangani"}
+              ? "Perlu tanggapan faskes"
+              : "Semua tertangani"}
           </p>
         </motion.div>
 
         <motion.div
-          whileHover={{ y: -3 }}
+          whileHover={{ y: -2 }}
           transition={{ type: "spring", stiffness: 320, damping: 24 }}
-          className="bg-slate-50/70 hover:bg-white p-4 rounded-3xl border border-emerald-100/80 transition-shadow hover:shadow-md"
+          className="bg-white p-4.5 rounded-2xl border border-slate-200/70 shadow-2xs"
         >
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
               Selesai / Disetujui
             </span>
-            <div className="w-8 h-8 rounded-2xl bg-[#D6F2EE] text-[#0E947A] flex items-center justify-center">
+            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-[#0E947A] flex items-center justify-center border border-emerald-100">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
-          <p className="text-2xl font-black text-[#0E947A] mt-2 font-mono">
+          <p className="text-2xl font-black text-slate-900 mt-2 font-mono">
             {approvedClaims.length}
           </p>
-          <p className="text-[11px] text-[#0E947A] font-medium mt-0.5">
+          <p className="text-[11px] text-slate-400 mt-0.5">
             Telah lolos verifikasi
           </p>
         </motion.div>
       </div>
 
-      {/* Row 4: PinHome Split Bottom Section */}
+      {/* Row 4: Split Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
         <div className="lg:col-span-8">
           <div className="flex items-center justify-between mb-4">
@@ -425,175 +422,124 @@ const DashboardFaskesView = ({
             <button
               type="button"
               onClick={onGoToKlaimSaya}
-              className="text-xs font-extrabold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group"
+              className="text-xs font-bold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group"
             >
               <span>Lihat Semua Klaim Saya</span>
               <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100">
-            {recentClaims.map((claim, idx) => (
-              <motion.div
-                key={claim.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05, duration: 0.3 }}
-                whileHover={{ x: 4 }}
-                onClick={() => onSelectClaim(claim)}
-                className="py-4 px-2 hover:bg-slate-50/70 rounded-2xl transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-              >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-12 h-12 rounded-full bg-[#D6F2EE] text-[#0E947A] flex flex-col items-center justify-center font-extrabold text-xs shrink-0 font-mono relative overflow-hidden shadow-2xs">
-                    <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-[#F6B8C6]/60" />
-                    <span className="relative z-10">
-                      V{claim.currentVersion}
-                    </span>
-                  </div>
+          <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs divide-y divide-slate-100 overflow-hidden">
+            {recentClaims.map((claim, idx) => {
+              // Exactly 1 single primary indicator badge per record
+              const singleStatusBadge = claim.status === "disetujui"
+                ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                : claim.status === "klarifikasi"
+                  ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
+                  : claim.status === "ditelaah"
+                    ? { label: "Ditelaah", cls: "bg-sky-50 text-sky-700 border-sky-200" }
+                    : { label: "Menunggu Telaah", cls: "bg-slate-50 text-slate-600 border-slate-200" };
 
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-extrabold text-slate-900 group-hover:text-[#0E947A] transition-colors truncate">
-                        {claim.primaryDiagnosis.name}
-                      </p>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D6F2EE]/80 text-[#0E947A] flex items-center gap-1">
-                        <ShieldCheck className="w-3 h-3" />
-                        Segel Terverifikasi
+              return (
+                <motion.div
+                  key={claim.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.04, duration: 0.25 }}
+                  onClick={() => onSelectClaim(claim)}
+                  className="p-4 hover:bg-slate-50/70 transition-colors cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
+                >
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    {/* Clean unified version badge */}
+                    <div className="w-11 h-11 rounded-xl bg-slate-50 border border-slate-200/80 text-slate-700 flex flex-col items-center justify-center font-bold text-xs shrink-0 font-mono">
+                      <span>V{claim.currentVersion}</span>
+                      <span className="text-[8px] font-semibold text-slate-400 uppercase tracking-tighter">
+                        Versi
                       </span>
                     </div>
 
-                    <p className="text-xs text-slate-400 mt-0.5 truncate">
-                      <span className="font-mono font-semibold text-slate-600">
-                        #{claim.claimNumber}
-                      </span>{" "}
-                      • Pasien: {claim.patientPseudoId} • {claim.inacbgCode}{" "}
-                      (Sev {claim.severity})
-                    </p>
-                  </div>
-                </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-slate-900 group-hover:text-[#0E947A] transition-colors truncate">
+                        {claim.primaryDiagnosis.name}
+                      </p>
 
-                <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-5 shrink-0">
-                  <span
-                    className={`px-3 py-1 rounded-lg text-[11px] font-bold capitalize ${
-                      claim.status === "disetujui"
-                        ? "bg-[#D6F2EE] text-[#0E947A]"
-                        : claim.status === "ditelaah" ||
-                            claim.status === "klarifikasi"
-                          ? "bg-[#FEF6C7] text-amber-800"
-                          : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {claim.status.replace("_", " ")}
-                  </span>
+                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                        <span className="font-mono font-medium text-slate-600">
+                          #{claim.claimNumber}
+                        </span>{" "}
+                        • Pasien: {claim.patientPseudoId} • {claim.inacbgCode}
+                      </p>
 
-                  <div className="text-right min-w-[95px]">
-                    <p className="text-xs font-extrabold text-slate-900 font-mono">
-                      Rp {claim.billedAmount.toLocaleString("id-ID")}
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">
-                      {claim.losDays} Hari •{" "}
-                      {new Date(claim.createdAt).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short"
-                      })}
-                    </p>
+                      <p className="text-[11px] text-slate-400 mt-1 truncate">
+                        Segel kriptografis terverifikasi • {claim.losDays} hari rawat • {new Date(claim.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="p-1.5 rounded-full text-slate-300 group-hover:text-[#0E947A] group-hover:bg-[#D6F2EE]/40 transition-colors">
-                    <MoreVertical className="w-4 h-4" />
+                  <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 sm:pl-3 border-t sm:border-t-0 pt-2 sm:pt-0 border-slate-100">
+                    {/* The 1 single primary indicator badge */}
+                    <span
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border ${singleStatusBadge.cls}`}
+                    >
+                      {singleStatusBadge.label}
+                    </span>
+
+                    <div className="text-right min-w-[90px]">
+                      <p className="text-xs font-bold text-slate-900 font-mono">
+                        Rp {claim.billedAmount.toLocaleString("id-ID")}
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">
+                        {claim.losDays} hari rawat
+                      </p>
+                    </div>
+
+                    <div className="text-slate-300 group-hover:text-[#0E947A] transition-colors">
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </div>
         </div>
 
-        {/* Right Column (4 cols): PinHome Illustrated Pastel Card */}
+        {/* Right Column (4 cols): Calm, Professional Highlight Card */}
         <div className="lg:col-span-4">
-          <motion.div
-            whileHover={{ y: -4 }}
-            transition={{ type: "spring", stiffness: 280, damping: 22 }}
-            className="rounded-[32px] bg-[#D6F2EE] p-6 sm:p-7 relative overflow-hidden min-h-[300px] flex flex-col justify-between shadow-xs"
-          >
-            <div className="relative z-10 max-w-[230px]">
-              <span className="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wider text-[#0E947A] bg-white/70 px-2.5 py-1 rounded-full mb-3">
+          <div className="rounded-2xl bg-slate-50 border border-slate-200/80 p-6 relative overflow-hidden flex flex-col justify-between shadow-2xs">
+            <div className="relative z-10">
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#0E947A] bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full mb-3">
                 <Sparkles className="w-3 h-3" /> Bukti Objektif Level 2
               </span>
-              <h3 className="text-xl font-extrabold text-slate-900 leading-tight">
-                Percepat Verifikasi Klaim!
+              <h3 className="text-base font-bold text-slate-900 leading-snug">
+                Percepat Verifikasi Klaim
               </h3>
-              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
                 Kirim hasil laboratorium langsung dari LIS analyzer agar klaim
-                mendapatkan jalur hijau Fast-Track.
+                mendapatkan jalur hijau Fast-Track otomatis.
               </p>
 
-              <div className="mt-5 flex flex-wrap items-center gap-2.5">
-                <motion.button
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <button
                   type="button"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.96 }}
                   onClick={onGoToLab}
-                  className="px-5 py-2.5 rounded-full bg-[#F5DF65] hover:bg-[#FACC15] text-slate-900 font-extrabold text-xs shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                  className="px-4 py-2 rounded-xl bg-[#0E947A] hover:bg-[#0B7A64] text-white font-semibold text-xs shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
                 >
                   <FlaskConical className="w-3.5 h-3.5" />
                   <span>Kirim Lab LIS</span>
-                </motion.button>
+                </button>
 
                 {clarificationClaims.length > 0 && (
-                  <motion.button
+                  <button
                     type="button"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.96 }}
                     onClick={handleClarification}
-                    className="px-4 py-2.5 rounded-full bg-white/80 hover:bg-white text-[#0E947A] font-extrabold text-xs shadow-2xs transition-colors cursor-pointer"
+                    className="px-3.5 py-2 rounded-xl bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs border border-slate-200 transition-colors cursor-pointer"
                   >
                     Klarifikasi ({clarificationClaims.length})
-                  </motion.button>
+                  </button>
                 )}
               </div>
             </div>
-
-            <svg
-              viewBox="0 0 260 150"
-              className="w-full h-36 absolute bottom-0 right-0 left-0 pointer-events-none"
-              fill="none"
-            >
-              <path
-                d="M140 150 L140 120 L170 120 L170 95 L200 95 L200 70 L230 70 L230 45 L260 45 L260 150 Z"
-                fill="#F6B8C6"
-              />
-              <path
-                d="M215 95 C216 65 220 45 222 28"
-                stroke="#0B6B58"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <path
-                d="M222 28 C205 20 192 28 188 36 C200 34 212 32 222 28 Z"
-                fill="#0E947A"
-              />
-              <path
-                d="M222 28 C236 16 250 22 256 32 C244 30 232 28 222 28 Z"
-                fill="#0E947A"
-              />
-              <path
-                d="M222 28 C208 36 198 48 196 56 C208 48 216 38 222 28 Z"
-                fill="#0B6B58"
-              />
-              <path
-                d="M15 150 C15 118 35 98 52 90 C48 115 38 135 28 150 Z"
-                fill="#0B6B58"
-              />
-              <path
-                d="M32 150 C42 115 68 96 92 92 C78 118 62 136 46 150 Z"
-                fill="#0E947A"
-              />
-              <path
-                d="M52 150 C72 126 98 116 122 118 C102 134 82 144 65 150 Z"
-                fill="#14B897"
-              />
-            </svg>
-          </motion.div>
+          </div>
         </div>
       </div>
     </div>

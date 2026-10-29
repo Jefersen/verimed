@@ -33,7 +33,7 @@ const INITIAL_DEVICES = [
     label: "Sysmex XN-1000 Hematology",
     description: "Level 2 Registered Analyzer (Hematologi • HL7 v2.5)",
     badge: "LIS L2",
-    badgeColor: "bg-emerald-100 text-emerald-800",
+    badgeColor: "bg-slate-100 text-slate-700 border border-slate-200/60",
     protocol: "HL7 v2.5 / ASTM",
     ip: "192.168.10.14:5100"
   },
@@ -42,7 +42,7 @@ const INITIAL_DEVICES = [
     label: "Siemens MAGNETOM Altea 1.5T MRI",
     description: "Modalitas Radiologi Neurologi & Vaskular (DICOM SR / PACS)",
     badge: "DICOM L2",
-    badgeColor: "bg-teal-100 text-teal-800",
+    badgeColor: "bg-slate-100 text-slate-700 border border-slate-200/60",
     protocol: "DICOM TLS / PACS",
     ip: "192.168.10.22:104"
   },
@@ -51,7 +51,7 @@ const INITIAL_DEVICES = [
     label: "GE Revolution CT-Scan 128-Slice",
     description: "Modalitas CT-Scan Thorax & Trauma (DICOM SR / PACS)",
     badge: "DICOM L2",
-    badgeColor: "bg-cyan-100 text-cyan-800",
+    badgeColor: "bg-slate-100 text-slate-700 border border-slate-200/60",
     protocol: "DICOM TLS / PACS",
     ip: "192.168.10.25:104"
   },
@@ -60,7 +60,7 @@ const INITIAL_DEVICES = [
     label: "Philips EPIQ CVx Echocardiography",
     description: "Modalitas Kardiologi & Ultrasonografi Jantung (DICOM/HL7)",
     badge: "CARDIO L2",
-    badgeColor: "bg-sky-100 text-sky-800",
+    badgeColor: "bg-slate-100 text-slate-700 border border-slate-200/60",
     protocol: "DICOM / FHIR",
     ip: "192.168.10.31:104"
   },
@@ -69,7 +69,7 @@ const INITIAL_DEVICES = [
     label: "Abbott Architect c8000",
     description: "Clinical Chemistry & Immunoassay Analyzer",
     badge: "LIS L2",
-    badgeColor: "bg-indigo-100 text-indigo-800",
+    badgeColor: "bg-slate-100 text-slate-700 border border-slate-200/60",
     protocol: "HL7 v2.5",
     ip: "192.168.10.18:5100"
   }
@@ -471,8 +471,12 @@ const LabVaultView = ({
                   <td className="py-3.5 px-4 text-center">
                     <div className="inline-flex flex-col items-center">
                       <span
-    className={`font-mono font-bold text-xs px-2 py-0.5 rounded-md ${lab.isAbnormal ? "bg-amber-100 text-amber-800" : "bg-emerald-100 text-emerald-800"}`}
-  >
+                        className={`font-mono font-bold text-xs px-2.5 py-0.5 rounded-md border ${
+                          lab.isAbnormal
+                            ? "bg-amber-50 text-amber-800 border-amber-200"
+                            : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                        }`}
+                      >
                         {lab.value} {lab.unit}
                       </span>
                       <span className="text-[10px] text-slate-400 mt-0.5">
@@ -487,8 +491,7 @@ const LabVaultView = ({
                   </td>
 
                   <td className="py-3.5 px-4">
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
-                      <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                    <span className="text-[11px] font-medium text-slate-700 block">
                       {lab.assuranceLevel}
                     </span>
                     <span className="block text-[10px] text-slate-400 mt-0.5">

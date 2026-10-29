@@ -120,18 +120,28 @@ const ClaimDetailModal = ({
                 {claim.facilityName}
               </span>
 
-              {
-    /* Status Badge */
-  }
-              <span
-    className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${claim.status === "disetujui" ? "bg-emerald-100 text-emerald-800" : claim.status === "ditelaah" ? "bg-amber-100 text-amber-800" : claim.status === "klarifikasi" ? "bg-blue-100 text-blue-800" : "bg-slate-200 text-slate-700"}`}
-  >
-                {claim.status.replace("_", " ")}
-              </span>
+              {/* Exactly 1 Single Primary Status Badge */}
+              {(() => {
+                const singleBadge = claim.isTampered
+                  ? { label: "Segel Tidak Cocok", cls: "bg-rose-50 text-rose-700 border-rose-200" }
+                  : claim.status === "klarifikasi"
+                    ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
+                    : claim.status === "disetujui"
+                      ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                      : claim.status === "ditelaah"
+                        ? { label: "Ditelaah", cls: "bg-sky-50 text-sky-700 border-sky-200" }
+                        : claim.fastTrack
+                          ? { label: "Fast-Track", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
+                          : { label: "Menunggu Telaah", cls: "bg-slate-100 text-slate-700 border-slate-200" };
 
-              {claim.fastTrack && <span className="text-[11px] font-bold bg-emerald-500 text-white px-2 py-0.5 rounded-full">
-                  Fast-Track
-                </span>}
+                return (
+                  <span
+                    className={`text-[11px] font-semibold tracking-wider px-2.5 py-0.5 rounded-full border ${singleBadge.cls}`}
+                  >
+                    {singleBadge.label}
+                  </span>
+                );
+              })()}
             </div>
 
             <h2 className="text-lg font-bold text-slate-900 mt-1">
