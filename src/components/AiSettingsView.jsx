@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Cpu,
@@ -8,9 +8,12 @@ import {
   AlertTriangle,
   Lock,
   PowerOff,
-  Sparkles
+  Sparkles,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
+const AI_STORAGE_KEY = "verimed_ai_persistent_v1";
 const DEFAULT_AI_CONFIG = {
   connected: false,
   provider: "gemini",
@@ -20,6 +23,21 @@ const DEFAULT_AI_CONFIG = {
   mode: "fallback",
   availableModels: []
 };
+function loadSavedAiState() {
+  try {
+    const raw = localStorage.getItem(AI_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+  }
+  return null;
+}
+function saveAiStateToLocal(partial) {
+  try {
+    const existing = loadSavedAiState() || {};
+    localStorage.setItem(AI_STORAGE_KEY, JSON.stringify({ ...existing, ...partial }));
+  } catch (e) {
+  }
+}
 const AiSettingsView = ({
   currentUser,
   aiConfig: propAiConfig,
@@ -27,12 +45,23 @@ const AiSettingsView = ({
   onShowToast = () => {
   }
 }) => {
-  const [currentConfig, setCurrentConfig] = useState(propAiConfig || DEFAULT_AI_CONFIG);
-  const [provider, setProvider] = useState(propAiConfig?.provider || "gemini");
-  const [apiKeyInput, setApiKeyInput] = useState("");
-  const [baseUrlInput, setBaseUrlInput] = useState("");
-  const [detectedModels, setDetectedModels] = useState(propAiConfig?.availableModels || []);
-  const [selectedModel, setSelectedModel] = useState(propAiConfig?.activeModel || "");
+  const savedLocal = loadSavedAiState();
+  const initialProvider = savedLocal?.provider || propAiConfig?.provider || "gemini";
+  const initialKeysMap = savedLocal?.apiKeysByProvider || {};
+  const [currentConfig, setCurrentConfig] = useState(
+    savedLocal?.currentConfig || propAiConfig || DEFAULT_AI_CONFIG
+  );
+  const [provider, setProvider] = useState(initialProvider);
+  const [apiKeysByProvider, setApiKeysByProvider] = useState(initialKeysMap);
+  const [apiKeyInput, setApiKeyInput] = useState(initialKeysMap[initialProvider] || "");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [baseUrlInput, setBaseUrlInput] = useState(savedLocal?.baseUrlInput || "");
+  const [detectedModels, setDetectedModels] = useState(
+    savedLocal?.detectedModels || propAiConfig?.availableModels || []
+  );
+  const [selectedModel, setSelectedModel] = useState(
+    savedLocal?.selectedModel || propAiConfig?.activeModel || ""
+  );
   const [isDetecting, setIsDetecting] = useState(false);
   const [detectError, setDetectError] = useState(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -40,13 +69,26 @@ const AiSettingsView = ({
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [testError, setTestError] = useState(null);
+  const lastAutoDetectedKeyRef = useRef(initialKeysMap[initialProvider] || "");
 
-  const getAuthHeaders = async () => {
+  // Persist changes to localStorage automatically so API Key & models never disappear
+  useEffect(() => {
+    saveAiStateToLocal({
+      currentConfig,
+      provider,
+      apiKeysByProvider,
+      baseUrlInput,
+      detectedModels,
+      selectedModel
+    });
+  }, [currentConfig, provider, apiKeysByProvider, baseUrlInput, detectedModels, selectedModel]);
+
+  const getAuthHeaders = async (forceRefresh = false) => {
     const userRole = currentUser?.role || "admin";
     let token = sessionStorage.getItem("verimed_auth_token");
     const cachedRole = sessionStorage.getItem("verimed_auth_role");
 
-    if (!token || cachedRole !== userRole) {
+    if (forceRefresh || !token || cachedRole !== userRole) {
       try {
         const authRes = await fetch("/api/auth/token", {
           method: "POST",
@@ -79,20 +121,22 @@ const AiSettingsView = ({
     let isMounted = true;
     const fetchConfig = async () => {
       try {
-        const authHeaders = await getAuthHeaders();
-        const res = await fetch("/api/settings/ai", {
-          headers: authHeaders
-        });
+        let authHeaders = await getAuthHeaders();
+        let res = await fetch("/api/settings/ai", { headers: authHeaders });
+        if (res.status === 403) {
+          authHeaders = await getAuthHeaders(true);
+          res = await fetch("/api/settings/ai", { headers: authHeaders });
+        }
         if (res.ok && isMounted) {
           const data = await res.json();
-          setCurrentConfig(data);
-          if (data.provider) setProvider(data.provider);
-          if (Array.isArray(data.availableModels) && data.availableModels.length > 0) {
-            setDetectedModels(data.availableModels);
-            setSelectedModel(data.activeModel || data.availableModels[0]);
-          } else {
-            setDetectedModels([]);
-            setSelectedModel("");
+          // Only overwrite local state if server is connected OR local isn't connected
+          if (data.connected) {
+            setCurrentConfig(data);
+            if (data.provider) setProvider(data.provider);
+            if (Array.isArray(data.availableModels) && data.availableModels.length > 0) {
+              setDetectedModels(data.availableModels);
+              setSelectedModel((prev) => prev || data.activeModel || data.availableModels[0]);
+            }
           }
         }
       } catch (e) {
@@ -103,18 +147,19 @@ const AiSettingsView = ({
       isMounted = false;
     };
   }, [currentUser]);
+
   const handleProviderChange = (newP) => {
     setProvider(newP);
-    setApiKeyInput("");
+    const savedKeyForProvider = apiKeysByProvider[newP] || "";
+    setApiKeyInput(savedKeyForProvider);
+    lastAutoDetectedKeyRef.current = savedKeyForProvider;
     setDetectError(null);
     if (currentConfig.connected && currentConfig.provider === newP && currentConfig.availableModels?.length > 0) {
       setDetectedModels(currentConfig.availableModels);
       setSelectedModel(currentConfig.activeModel || currentConfig.availableModels[0]);
-    } else {
-      setDetectedModels([]);
-      setSelectedModel("");
     }
   };
+
   const handleDetectModels = async (keyOverride) => {
     const keyToUse = (typeof keyOverride === "string" ? keyOverride : apiKeyInput).trim();
     if (!keyToUse && !currentConfig.keyHint) {
@@ -124,8 +169,8 @@ const AiSettingsView = ({
     setIsDetecting(true);
     setDetectError(null);
     try {
-      const authHeaders = await getAuthHeaders();
-      const res = await fetch("/api/settings/ai/detect-models", {
+      let authHeaders = await getAuthHeaders();
+      let res = await fetch("/api/settings/ai/detect-models", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -137,6 +182,21 @@ const AiSettingsView = ({
           baseUrl: baseUrlInput.trim() || void 0
         })
       });
+      if (res.status === 403) {
+        authHeaders = await getAuthHeaders(true);
+        res = await fetch("/api/settings/ai/detect-models", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders
+          },
+          body: JSON.stringify({
+            provider,
+            apiKey: keyToUse || void 0,
+            baseUrl: baseUrlInput.trim() || void 0
+          })
+        });
+      }
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data.error || "Gagal mendeteksi model dari provider.");
@@ -159,18 +219,22 @@ const AiSettingsView = ({
       setIsDetecting(false);
     }
   };
+
   useEffect(() => {
     const cleanKey = apiKeyInput.trim();
-    if (cleanKey.length >= 28) {
+    if (cleanKey.length >= 28 && cleanKey !== lastAutoDetectedKeyRef.current) {
       const timer = setTimeout(() => {
+        lastAutoDetectedKeyRef.current = cleanKey;
         handleDetectModels(cleanKey);
       }, 700);
       return () => clearTimeout(timer);
     }
   }, [apiKeyInput, provider]);
+
   const handleConnect = async (e) => {
     e.preventDefault();
-    if (!apiKeyInput.trim() && !currentConfig.keyHint) {
+    const cleanKey = apiKeyInput.trim();
+    if (!cleanKey && !currentConfig.keyHint) {
       onShowToast("Harap masukkan API Key provider AI.", "warning");
       return;
     }
@@ -180,8 +244,8 @@ const AiSettingsView = ({
     }
     setIsConnecting(true);
     try {
-      const authHeaders = await getAuthHeaders();
-      const res = await fetch("/api/settings/ai/connect", {
+      let authHeaders = await getAuthHeaders();
+      let res = await fetch("/api/settings/ai/connect", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -189,11 +253,27 @@ const AiSettingsView = ({
         },
         body: JSON.stringify({
           provider,
-          apiKey: apiKeyInput.trim() || void 0,
+          apiKey: cleanKey || void 0,
           baseUrl: baseUrlInput.trim() || void 0,
           model: selectedModel || detectedModels[0]
         })
       });
+      if (res.status === 403) {
+        authHeaders = await getAuthHeaders(true);
+        res = await fetch("/api/settings/ai/connect", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...authHeaders
+          },
+          body: JSON.stringify({
+            provider,
+            apiKey: cleanKey || void 0,
+            baseUrl: baseUrlInput.trim() || void 0,
+            model: selectedModel || detectedModels[0]
+          })
+        });
+      }
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
         throw new Error(errData.error || "Gagal menghubungkan AI provider.");
@@ -206,12 +286,14 @@ const AiSettingsView = ({
       if (data.status.activeModel) {
         setSelectedModel(data.status.activeModel);
       }
+      if (cleanKey) {
+        setApiKeysByProvider((prev) => ({ ...prev, [provider]: cleanKey }));
+      }
       if (onUpdateAiConfig) {
         onUpdateAiConfig(data.status);
       }
-      setApiKeyInput("");
       setDetectError(null);
-      onShowToast(`Berhasil terhubung ke ${provider.toUpperCase()} (${data.status.activeModel}).`, "success");
+      onShowToast(`API Key & Model ${data.status.activeModel} berhasil disimpan!`, "success");
     } catch (err) {
       onShowToast(err.message || "Koneksi AI gagal.", "error");
     } finally {
@@ -255,17 +337,29 @@ const AiSettingsView = ({
   };
   const handleDisconnect = async () => {
     try {
-      const authHeaders = await getAuthHeaders();
-      const res = await fetch("/api/settings/ai", {
+      let authHeaders = await getAuthHeaders();
+      let res = await fetch("/api/settings/ai", {
         method: "DELETE",
         headers: authHeaders
       });
+      if (res.status === 403) {
+        authHeaders = await getAuthHeaders(true);
+        res = await fetch("/api/settings/ai", {
+          method: "DELETE",
+          headers: authHeaders
+        });
+      }
       if (res.ok) {
         const data = await res.json();
         setCurrentConfig(data.status);
         setDetectedModels([]);
         setSelectedModel("");
         setApiKeyInput("");
+        setApiKeysByProvider((prev) => {
+          const next = { ...prev };
+          delete next[provider];
+          return next;
+        });
         setDetectError(null);
         if (onUpdateAiConfig) {
           onUpdateAiConfig(data.status);
@@ -375,12 +469,14 @@ const AiSettingsView = ({
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
-                  type="password"
+                  type={showApiKey ? "text" : "password"}
                   value={apiKeyInput}
                   onChange={(e) => {
-                    setApiKeyInput(e.target.value);
+                    const val = e.target.value;
+                    setApiKeyInput(val);
+                    setApiKeysByProvider((prev) => ({ ...prev, [provider]: val }));
                     if (detectError) setDetectError(null);
-                    if (!e.target.value.trim() && !currentConfig.keyHint) {
+                    if (!val.trim() && !currentConfig.keyHint) {
                       setDetectedModels([]);
                       setSelectedModel("");
                     }
@@ -391,9 +487,17 @@ const AiSettingsView = ({
                       handleDetectModels();
                     }
                   }}
-                  placeholder={currentConfig.keyHint ? `Tersimpan terenkripsi: ${currentConfig.keyHint} (Ketik baru untuk mengganti)` : `Masukkan API Key ${provider.toUpperCase()}...`}
-                  className="w-full px-3.5 py-2.5 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+                  placeholder={currentConfig.keyHint ? `Tersimpan: ${currentConfig.keyHint} (Ketik baru untuk mengganti)` : `Masukkan API Key ${provider.toUpperCase()}...`}
+                  className="w-full pl-3.5 pr-9 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey((prev) => !prev)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+                  title={showApiKey ? "Sembunyikan API Key" : "Tampilkan API Key"}
+                >
+                  {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
               </div>
 
               <button

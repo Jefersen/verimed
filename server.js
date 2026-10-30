@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import crypto from "crypto";
+import fs from "fs";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -9,6 +10,27 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3e3;
+const AI_STORE_PATH = path.resolve(__dirname, ".verimed-ai-store.json");
+
+function readAiStoreFile() {
+  try {
+    if (fs.existsSync(AI_STORE_PATH)) {
+      return JSON.parse(fs.readFileSync(AI_STORE_PATH, "utf8"));
+    }
+  } catch (e) {
+    console.warn("[Storage] Gagal membaca .verimed-ai-store.json:", e.message);
+  }
+  return {};
+}
+
+function writeAiStoreFile(data) {
+  try {
+    const existing = readAiStoreFile();
+    fs.writeFileSync(AI_STORE_PATH, JSON.stringify({ ...existing, ...data }, null, 2), "utf8");
+  } catch (e) {
+    console.warn("[Storage] Gagal menyimpan .verimed-ai-store.json:", e.message);
+  }
+}
 
 // HTTP Security Headers
 app.use((req, res, next) => {
@@ -18,7 +40,7 @@ app.use((req, res, next) => {
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Content-Security-Policy",
-    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https:;"
+    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https:;"
   );
   next();
 });
@@ -63,9 +85,10 @@ setInterval(() => {
 app.use("/api/settings/ai", aiRateLimiter);
 app.use("/api/auth", aiRateLimiter);
 
-const APP_SECRET = process.env.APP_SECRET || (() => {
+const storedAiFile = readAiStoreFile();
+const APP_SECRET = process.env.APP_SECRET || storedAiFile.appSecret || (() => {
   const randomSecret = crypto.randomBytes(32).toString("hex");
-  console.warn("[Security] APP_SECRET tidak ditemukan di environment. Menggunakan 256-bit cryptographically random ephemeral secret.");
+  writeAiStoreFile({ appSecret: randomSecret });
   return randomSecret;
 })();
 const ENCRYPTION_KEY = crypto.createHash("sha256").update(APP_SECRET).digest();
@@ -85,7 +108,7 @@ function decryptApiKey(data) {
   return decrypted;
 }
 const envGeminiKey = process.env.GEMINI_API_KEY;
-let aiConfig = {
+let aiConfig = storedAiFile.aiConfig || {
   provider: "gemini",
   encryptedData: envGeminiKey ? encryptApiKey(envGeminiKey) : null,
   keyHint: envGeminiKey ? `\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022${envGeminiKey.slice(-4)}` : "",
@@ -515,6 +538,7 @@ app.post("/api/settings/ai/connect", requireAdmin, async (req, res) => {
     mode: "ai",
     availableModels: models
   };
+  writeAiStoreFile({ aiConfig });
   res.json({
     success: true,
     message: `Koneksi AI berhasil terhubung ke ${provider.toUpperCase()} (Model: ${selectedModel}).`,
@@ -587,6 +611,7 @@ app.delete("/api/settings/ai", requireAdmin, (req, res) => {
     mode: "fallback",
     availableModels: []
   };
+  writeAiStoreFile({ aiConfig });
   res.json({
     success: true,
     message: "Koneksi AI telah diputus. Sistem beralih ke Mode Fallback Aturan & Regex.",
