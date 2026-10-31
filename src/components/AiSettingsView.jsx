@@ -305,6 +305,7 @@ const AiSettingsView = ({
     setTestResult(null);
     setTestError(null);
     const targetModel = selectedModel || currentConfig.activeModel;
+    const cleanKey = apiKeyInput.trim() || apiKeysByProvider[provider] || "";
     try {
       const authHeaders = await getAuthHeaders();
       const res = await fetch("/api/settings/ai/test", {
@@ -314,7 +315,13 @@ const AiSettingsView = ({
           ...authHeaders
         },
         body: JSON.stringify({
-          model: targetModel
+          model: targetModel,
+          clientConfig: {
+            provider,
+            apiKey: cleanKey,
+            model: targetModel,
+            baseUrl: baseUrlInput.trim() || void 0
+          }
         })
       });
       if (!res.ok) {
@@ -410,9 +417,9 @@ const AiSettingsView = ({
     <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
       <Lock className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
       <div className="space-y-1">
-        <p className="font-bold">Standar Keamanan Kunci API (PRD Bagian 12 & 14):</p>
+        <p className="font-bold">Standar Keamanan Kunci API (Penyimpanan Lokal Mandiri):</p>
         <p className="text-emerald-900 leading-relaxed">
-          Kunci API dienkripsi di sisi backend menggunakan <strong>AES-256-GCM (APP_SECRET)</strong>. Kunci tidak pernah disimpan di localStorage/sessionStorage, tidak pernah dikirim kembali ke browser secara utuh, dan disamarkan dengan *key hint* (contoh: <code>{currentConfig.keyHint || "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022a1b2"}</code>).
+          Kunci API disimpan secara privat di <strong>Lokal Browser Anda (localStorage)</strong> dan <strong>TIDAK DISIMPAN di database publik atau file server</strong>. Setiap permintaan analisis memanggil langsung model yang Anda pilih dengan kunci privat Anda, sehingga aman dan tidak dapat diakses pihak lain.
         </p>
       </div>
     </div>

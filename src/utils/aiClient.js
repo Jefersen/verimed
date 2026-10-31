@@ -9,9 +9,13 @@ export function getSavedClientAiConfig() {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     const provider = parsed.provider || parsed.currentConfig?.provider || "gemini";
-    const apiKey = parsed.apiKeys?.[provider] || "";
+    const apiKey =
+      parsed.apiKeysByProvider?.[provider] ||
+      parsed.apiKeys?.[provider] ||
+      parsed.apiKey ||
+      "";
     const model = parsed.selectedModel || parsed.currentConfig?.activeModel || "";
-    const baseUrl = parsed.baseUrls?.[provider] || "";
+    const baseUrl = parsed.baseUrls?.[provider] || parsed.baseUrlInput || "";
     if (!apiKey && provider !== "compat") return null;
     return { provider, apiKey, model, baseUrl };
   } catch {
@@ -21,20 +25,40 @@ export function getSavedClientAiConfig() {
 
 export async function fetchAiStatus() {
   try {
-    const res = await fetch("/api/ai/status");
-    if (!res.ok) return { connected: false, mode: "fallback" };
-    const data = await res.json();
     const localCfg = getSavedClientAiConfig();
-    if (!data.connected && localCfg?.apiKey) {
+    const res = await fetch("/api/ai/status");
+    if (!res.ok) {
+      if (localCfg?.apiKey) {
+        return {
+          connected: true,
+          provider: localCfg.provider,
+          activeModel: localCfg.model,
+          mode: "ai"
+        };
+      }
+      return { connected: false, mode: "fallback" };
+    }
+    const data = await res.json();
+    if (localCfg?.apiKey) {
       return {
+        ...data,
         connected: true,
         provider: localCfg.provider,
-        activeModel: localCfg.model || "gemini-3.7-flash",
+        activeModel: localCfg.model || data.activeModel,
         mode: "ai"
       };
     }
     return data;
   } catch {
+    const localCfg = getSavedClientAiConfig();
+    if (localCfg?.apiKey) {
+      return {
+        connected: true,
+        provider: localCfg.provider,
+        activeModel: localCfg.model,
+        mode: "ai"
+      };
+    }
     return { connected: false, mode: "fallback" };
   }
 }

@@ -410,21 +410,9 @@ const ClaimDetailModal = ({
                           </span>
                         )}
                         {liveAiData ? (
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 ${
-                              liveAiData.isFailover
-                                ? "bg-amber-50 text-amber-900 border-amber-300"
-                                : "bg-teal-100/80 text-teal-900 border-teal-300"
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                liveAiData.isFailover ? "bg-amber-500" : "bg-emerald-500 animate-pulse"
-                              }`}
-                            />
-                            {liveAiData.isFailover
-                              ? `Live LLM: ${liveAiData.model} (Cadangan Sementara: ${liveAiData.requestedModel} sedang 503)`
-                              : `Live LLM: ${liveAiData.model} (${(liveAiData.latencyMs / 1000).toFixed(1)} dtk) • Prompt #${liveAiData.reanalyzeCount}`}
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 bg-teal-100/80 text-teal-900 border-teal-300">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Live LLM: {liveAiData.model} ({(liveAiData.latencyMs / 1000).toFixed(1)} dtk) • Prompt #{liveAiData.reanalyzeCount}
                           </span>
                         ) : isAiScanning ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">

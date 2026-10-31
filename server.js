@@ -10,28 +10,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = Number(process.env.PORT) || 3e3;
-const AI_STORE_PATH = path.resolve(__dirname, ".verimed-ai-store.json");
-
-function readAiStoreFile() {
-  try {
-    if (fs.existsSync(AI_STORE_PATH)) {
-      return JSON.parse(fs.readFileSync(AI_STORE_PATH, "utf8"));
-    }
-  } catch (e) {
-    console.warn("[Storage] Gagal membaca .verimed-ai-store.json:", e.message);
-  }
-  return {};
-}
-
-function writeAiStoreFile(data) {
-  try {
-    const existing = readAiStoreFile();
-    fs.writeFileSync(AI_STORE_PATH, JSON.stringify({ ...existing, ...data }, null, 2), "utf8");
-  } catch (e) {
-    console.warn("[Storage] Gagal menyimpan .verimed-ai-store.json:", e.message);
-  }
-}
-
 // HTTP Security Headers
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -86,12 +64,7 @@ app.use("/api/settings/ai", aiRateLimiter);
 app.use("/api/ai", aiRateLimiter);
 app.use("/api/auth", aiRateLimiter);
 
-const storedAiFile = readAiStoreFile();
-const APP_SECRET = process.env.APP_SECRET || storedAiFile.appSecret || (() => {
-  const randomSecret = crypto.randomBytes(32).toString("hex");
-  writeAiStoreFile({ appSecret: randomSecret });
-  return randomSecret;
-})();
+const APP_SECRET = process.env.APP_SECRET || crypto.randomBytes(32).toString("hex");
 const ENCRYPTION_KEY = crypto.createHash("sha256").update(APP_SECRET).digest();
 function encryptApiKey(text) {
   const iv = crypto.randomBytes(12);
@@ -109,16 +82,16 @@ function decryptApiKey(data) {
   return decrypted;
 }
 const envGeminiKey = process.env.GEMINI_API_KEY;
-let aiConfig = storedAiFile.aiConfig || {
+let aiConfig = {
   provider: "gemini",
   encryptedData: envGeminiKey ? encryptApiKey(envGeminiKey) : null,
-  keyHint: envGeminiKey ? `\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022${envGeminiKey.slice(-4)}` : "",
-  activeModel: envGeminiKey ? "gemini-3.5-flash-lite" : "",
+  keyHint: envGeminiKey ? `••••••••${envGeminiKey.slice(-4)}` : "",
+  activeModel: envGeminiKey ? "gemini-3.7-flash" : "",
   connected: !!envGeminiKey,
-  testedAt: envGeminiKey ? (/* @__PURE__ */ new Date()).toISOString() : void 0,
+  testedAt: envGeminiKey ? new Date().toISOString() : void 0,
   isFromEnv: !!envGeminiKey,
   mode: envGeminiKey ? "ai" : "fallback",
-  availableModels: envGeminiKey ? ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"] : []
+  availableModels: envGeminiKey ? ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-3.8-flash"] : []
 };
 if (aiConfig && Array.isArray(aiConfig.availableModels)) {
   const nonTextKeywords = ["argon", "lyria", "robotics", "banana", "tts", "clip", "imagen", "embedding", "aqa", "image", "transcribe", "computer-use", "customtools", "audio"];
@@ -574,7 +547,7 @@ app.post("/api/settings/ai/connect", requireAdmin, async (req, res) => {
     mode: "ai",
     availableModels: models
   };
-  writeAiStoreFile({ aiConfig });
+  // Sesuai prinsip privasi lokal, AI config hanya disimpan di memory session runtime dan tidak disimpan ke file disk/database publik
   res.json({
     success: true,
     message: `Koneksi AI berhasil terhubung ke ${provider.toUpperCase()} (Model: ${selectedModel}).`,
@@ -592,27 +565,24 @@ app.post("/api/settings/ai/connect", requireAdmin, async (req, res) => {
   });
 });
 app.post("/api/settings/ai/test", requireAdmin, async (req, res) => {
-  if (!aiConfig.connected && !aiConfig.encryptedData) {
+  const { model, clientConfig } = req.body || {};
+  const provider = clientConfig?.provider || aiConfig.provider || "gemini";
+  const rawKey = (clientConfig?.apiKey && String(clientConfig.apiKey).trim()) || (aiConfig.encryptedData ? decryptApiKey(aiConfig.encryptedData) : "");
+  if (!rawKey && provider !== "compat") {
     return res.status(400).json({
       success: false,
-      error: "Belum ada AI Provider yang terhubung. Silakan hubungkan API Key terlebih dahulu."
+      error: "Belum ada API Key yang dimasukkan. Silakan masukkan API Key terlebih dahulu."
     });
   }
-  const rawKey = aiConfig.encryptedData ? decryptApiKey(aiConfig.encryptedData) : "";
-  if (!rawKey) {
-    return res.status(400).json({
-      success: false,
-      error: "Kunci enkripsi API tidak ditemukan. Harap masukkan ulang API Key."
-    });
-  }
-  const modelToTest = req.body?.model || aiConfig.activeModel;
+  const modelToTest = model || clientConfig?.model || aiConfig.activeModel;
   if (!modelToTest) {
     return res.status(400).json({
       success: false,
       error: "Model belum dipilih untuk diuji."
     });
   }
-  const testResult = await testModelLive(aiConfig.provider, rawKey, modelToTest, aiConfig.baseUrl);
+  const baseUrl = clientConfig?.baseUrl || aiConfig.baseUrl;
+  const testResult = await testModelLive(provider, rawKey, modelToTest, baseUrl);
   if (!testResult.success) {
     return res.status(400).json({
       success: false,
@@ -622,18 +592,17 @@ app.post("/api/settings/ai/test", requireAdmin, async (req, res) => {
   const testTimestamp = (/* @__PURE__ */ new Date()).toISOString();
   aiConfig.testedAt = testTimestamp;
   aiConfig.activeModel = modelToTest;
-  writeAiStoreFile({ aiConfig });
   res.json({
     success: true,
     latencyMs: testResult.latencyMs,
-    provider: aiConfig.provider,
+    provider,
     activeModel: modelToTest,
     testedAt: testTimestamp,
     sampleOutput: {
       responseSnippet: testResult.outputSnippet,
       diagnoses: [{ code: "A91", name: "Dengue Hemorrhagic Fever", quote: testResult.outputSnippet }],
       confidence: 0.98,
-      mode: aiConfig.mode
+      mode: "ai"
     }
   });
 });
@@ -643,14 +612,7 @@ app.post("/api/settings/ai/model", requireAdmin, (req, res) => {
   if (!model || typeof model !== "string") {
     return res.status(400).json({ success: false, error: "Nama model wajib diisi." });
   }
-  if (!aiConfig.encryptedData) {
-    return res.status(400).json({ success: false, error: "API Key belum dihubungkan. Hubungkan API Key terlebih dahulu." });
-  }
-  if (Array.isArray(aiConfig.availableModels) && aiConfig.availableModels.length > 0 && !aiConfig.availableModels.includes(model)) {
-    return res.status(400).json({ success: false, error: `Model ${model} tidak ada di daftar model terdeteksi untuk API Key ini.` });
-  }
   aiConfig.activeModel = model;
-  writeAiStoreFile({ aiConfig });
   console.log(`[AI] Model aktif diganti ke: ${model}`);
   res.json({ success: true, activeModel: model, message: `Model aktif diganti ke ${model}.` });
 });
@@ -667,7 +629,7 @@ app.delete("/api/settings/ai", requireAdmin, (req, res) => {
     mode: "fallback",
     availableModels: []
   };
-  writeAiStoreFile({ aiConfig });
+  // Sesuai prinsip privasi lokal, AI config hanya disimpan di memory session runtime dan tidak disimpan ke file disk/database publik
   res.json({
     success: true,
     message: "Koneksi AI telah diputus. Sistem beralih ke Mode Fallback Aturan & Regex.",
@@ -725,7 +687,7 @@ async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, max
     }
   }
 
-  // Always keep server aiConfig synchronized with the user's latest selected model, provider & key
+  // Always keep server in-memory aiConfig synchronized with the user's latest selected model, provider & key
   if (rawKey) {
     const prevKey = aiConfig.encryptedData ? (() => {
       try { return decryptApiKey(aiConfig.encryptedData); } catch { return ""; }
@@ -747,7 +709,6 @@ async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, max
         mode: "ai",
         availableModels: aiConfig.availableModels?.length ? aiConfig.availableModels : (model ? [model] : [])
       };
-      writeAiStoreFile({ aiConfig });
     }
   }
 
@@ -787,15 +748,13 @@ async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, max
         generationConfig
       });
 
-      // Utamakan model yang dipilih pengguna (model), dengan retry hingga 2x jika server Google sedang 503/429
+      // STRICT: Gunakan HANYA model yang dipilih pengguna (model), JANGAN beralih ke model lain!
       let res = null;
-      let usedModel = model;
-      let isFailover = false;
 
-      // Coba model pilihan pengguna terlebih dahulu
+      // Coba model pilihan pengguna terlebih dahulu (hingga 2 percobaan jika 503/429)
       for (let attempt = 1; attempt <= 2; attempt++) {
         const attemptCtrl = new AbortController();
-        const attemptTimer = setTimeout(() => attemptCtrl.abort(), 16000);
+        const attemptTimer = setTimeout(() => attemptCtrl.abort(), 20000);
         try {
           const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(rawKey)}`;
           res = await fetch(url, {
@@ -806,47 +765,17 @@ async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, max
           });
           clearTimeout(attemptTimer);
           if (res.ok) {
-            usedModel = model;
             break;
           }
           if (res.status !== 503 && res.status !== 429) {
             break;
           }
           console.warn(`[AI] Model ${model} mengembalikan HTTP ${res.status}, mencoba ulang (${attempt}/2)...`);
-          if (attempt < 2) await new Promise((r) => setTimeout(r, 1200));
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 1500));
         } catch (attemptErr) {
           clearTimeout(attemptTimer);
           console.warn(`[AI] Model ${model} batas waktu habis pada percobaan (${attempt}/2)...`);
           if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
-        }
-      }
-
-      // Jika model pilihan pengguna sedang 503 atau overload, gunakan cadangan HANYA untuk permintaan saat ini
-      // Pengaturan model pengguna di sistem TIDAK PERNAH diubah / di-overwrite!
-      if (!res || !res.ok) {
-        const backupModels = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemini-3.8-flash"].filter((m) => m !== model);
-        for (const backup of backupModels) {
-          console.warn(`[AI] Menggunakan model cadangan sementara ${backup} untuk permintaan ini...`);
-          const backupCtrl = new AbortController();
-          const backupTimer = setTimeout(() => backupCtrl.abort(), 16000);
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(backup)}:generateContent?key=${encodeURIComponent(rawKey)}`;
-            const backupRes = await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: requestBody,
-              signal: backupCtrl.signal
-            });
-            clearTimeout(backupTimer);
-            if (backupRes.ok) {
-              res = backupRes;
-              usedModel = backup;
-              isFailover = true;
-              break;
-            }
-          } catch {
-            clearTimeout(backupTimer);
-          }
         }
       }
 
@@ -856,14 +785,16 @@ async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, max
         const errData = res ? await res.json().catch(() => ({})) : {};
         const status = res ? res.status : 500;
         const msg = errData?.error?.message || `Google Gemini API mengembalikan status ${status}`;
-        console.warn(`[AI] Gagal ${usedModel}: ${status} ${msg}`);
+        console.warn(`[AI] Gagal memanggil ${model}: ${status} ${msg}`);
         return {
           success: false,
           code: status === 503 || status === 429 ? "MODEL_BUSY" : "PROVIDER_ERROR",
           provider,
-          model: usedModel,
+          model,
           requestedModel: model,
-          error: `Model ${model} sedang mengalami lonjakan beban tinggi (HTTP ${status}) di server Google Gemini. Silakan coba klik Analisis Ulang kembali.`
+          error: status === 503 || status === 429
+            ? `Model ${model} saat ini sedang mengalami lonjakan beban tinggi (HTTP ${status} High Demand) di server Google Gemini. Harap coba klik Analisis Ulang kembali.`
+            : `Gagal memanggil model ${model}: ${msg}`
         };
       }
 
@@ -876,23 +807,23 @@ async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, max
         .join("")
         .trim();
       console.log(
-        `[AI] ${usedModel} OK ${latencyMs}ms finish=${candidate?.finishReason} out=${data?.usageMetadata?.candidatesTokenCount} thoughts=${data?.usageMetadata?.thoughtsTokenCount || 0}`
+        `[AI] Model ${model} OK ${latencyMs}ms finish=${candidate?.finishReason} out=${data?.usageMetadata?.candidatesTokenCount} thoughts=${data?.usageMetadata?.thoughtsTokenCount || 0}`
       );
       if (!text) {
         return {
           success: false,
           code: "EMPTY_RESPONSE",
           provider,
-          model: usedModel,
-          error: `Model ${usedModel} mengembalikan respons kosong (finishReason: ${candidate?.finishReason || "-"}).`
+          model,
+          requestedModel: model,
+          error: `Model ${model} mengembalikan respons kosong (finishReason: ${candidate?.finishReason || "-"}).`
         };
       }
       return {
         success: true,
         provider,
-        model: usedModel,
+        model,
         requestedModel: model,
-        isFailover,
         latencyMs,
         rawText: text,
         parsed: extractJsonFromText(text)
@@ -1195,7 +1126,6 @@ Kembalikan HANYA JSON valid dengan struktur:
     provider: llmResult.provider,
     model: llmResult.model,
     requestedModel: llmResult.requestedModel,
-    isFailover: !!llmResult.isFailover,
     latencyMs: llmResult.latencyMs,
     analyzedAt: new Date().toISOString(),
     reanalyzeCount,
