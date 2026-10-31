@@ -585,7 +585,47 @@ const AiSettingsView = ({
 
               <CustomSelect
                 value={selectedModel}
-                onChange={(val) => setSelectedModel(String(val))}
+                onChange={async (val) => {
+                  const newModel = String(val);
+                  setSelectedModel(newModel);
+                  // Simpan langsung ke localStorage agar tidak ter-reset
+                  saveAiStateToLocal({
+                    selectedModel: newModel,
+                    currentConfig: { ...currentConfig, activeModel: newModel }
+                  });
+                  // Sinkronkan langsung ke server agar semua fitur AI memakai model yang dipilih
+                  if (currentConfig.connected && currentConfig.provider === provider) {
+                    try {
+                      let authHeaders = await getAuthHeaders();
+                      let res = await fetch("/api/settings/ai/model", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json", ...authHeaders },
+                        body: JSON.stringify({ model: newModel })
+                      });
+                      if (res.status === 403) {
+                        authHeaders = await getAuthHeaders(true);
+                        res = await fetch("/api/settings/ai/model", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json", ...authHeaders },
+                          body: JSON.stringify({ model: newModel })
+                        });
+                      }
+                      const data = await res.json().catch(() => ({}));
+                      if (res.ok && data.success) {
+                        const updatedCfg = { ...currentConfig, activeModel: newModel };
+                        setCurrentConfig(updatedCfg);
+                        if (onUpdateAiConfig) {
+                          onUpdateAiConfig(updatedCfg);
+                        }
+                        onShowToast(`Model aktif sekarang: ${newModel}`, "success");
+                      } else {
+                        onShowToast(data.error || "Gagal mengganti model di server.", "error");
+                      }
+                    } catch (err) {
+                      onShowToast("Gagal menghubungi server untuk mengganti model.", "error");
+                    }
+                  }
+                }}
                 options={detectedModels.map((m) => ({
                   value: m,
                   label: m,

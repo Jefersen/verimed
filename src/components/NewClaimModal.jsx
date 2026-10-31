@@ -8,11 +8,13 @@ import {
   GitBranch,
   Sparkles,
   Search,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
 import { buildClaimLeaves, createSeal } from "../utils/crypto";
 import { evaluateClaimRules } from "../utils/rules";
+import { requestAiInacbgGrouper } from "../utils/aiClient";
 
 const COMMON_INACBG = [
   { code: "D-4-10-I", name: "Demam Berdarah Dengue Ringan", defaultSev: 1, defaultAmount: 435e4, dxCode: "A91", dxName: "Dengue Hemorrhagic Fever", cmg: "CMG D — Hematologi & Imunologi" },
@@ -232,6 +234,7 @@ const NewClaimModal = ({
   const [aiDiseaseQuery, setAiDiseaseQuery] = useState("");
   const [isAiGrouping, setIsAiGrouping] = useState(false);
   const [aiGroupingResult, setAiGroupingResult] = useState(null);
+  const [aiGrouperWarning, setAiGrouperWarning] = useState(null);
 
   const losDays = Math.max(
     1,
@@ -253,28 +256,43 @@ const NewClaimModal = ({
     }
   };
 
-  const handleRunAiGrouper = (customQuery) => {
+  const handleRunAiGrouper = async (customQuery) => {
     const query = (typeof customQuery === "string" ? customQuery : aiDiseaseQuery).trim();
     if (!query) return;
     if (typeof customQuery === "string") {
       setAiDiseaseQuery(customQuery);
     }
     setIsAiGrouping(true);
-    setTimeout(() => {
-      const grouped = runBpjsAiGrouper(query, severity);
+    setAiGrouperWarning(null);
+
+    const apiRes = await requestAiInacbgGrouper(query, severity);
+    setIsAiGrouping(false);
+
+    if (apiRes.success && apiRes.grouped) {
+      const grouped = {
+        ...apiRes.grouped,
+        isLiveAi: true,
+        model: apiRes.model,
+        latencyMs: apiRes.latencyMs
+      };
       setInacbgList((prev) => {
         const exists = prev.some((item) => item.code === grouped.code);
-        return exists ? prev : [grouped, ...prev];
+        return exists ? prev.map((it) => (it.code === grouped.code ? grouped : it)) : [grouped, ...prev];
       });
       setSelectedInacbg(grouped.code);
       setSeverity(grouped.defaultSev);
       setBilledAmount(grouped.defaultAmount);
       setPrimaryDxCode(grouped.dxCode);
       setPrimaryDxName(grouped.dxName);
-      setResumeText(grouped.resume);
+      if (grouped.resume) setResumeText(grouped.resume);
       setAiGroupingResult(grouped);
-      setIsAiGrouping(false);
-    }, 380);
+    } else {
+      setAiGroupingResult(null);
+      setAiGrouperWarning(
+        apiRes.error ||
+          "API Key AI belum dihubungkan di menu Konfigurasi AI (peran Admin). Silakan hubungkan API Key terlebih dahulu untuk menggunakan AI Auto-Grouper."
+      );
+    }
   };
   const handleAddLabRef = (labId) => {
     if (!labId) return;
@@ -609,14 +627,38 @@ const NewClaimModal = ({
               ))}
             </div>
 
+            {/* Warning Banner if AI API Key was not connected */}
+            {aiGrouperWarning && (
+              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-bold block text-amber-950">
+                    AI Tidak Terpanggil (Menggunakan Kamus Lokal INA-CBG):
+                  </span>
+                  <span>{aiGrouperWarning}</span>
+                </div>
+              </div>
+            )}
+
             {/* AI Grouping Explanation Output */}
             {aiGroupingResult && (
               <div className="p-3 rounded-xl bg-white border border-emerald-200 text-xs space-y-1">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <span className="font-bold text-[#0E947A] flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    <span>Hasil Pemetaan AI Grouper BPJS:</span>
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-[#0E947A] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Hasil Pemetaan Grouper BPJS:</span>
+                    </span>
+                    {aiGroupingResult.isLiveAi ? (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-teal-100 text-teal-900 border border-teal-300">
+                        Live LLM: {aiGroupingResult.model} ({aiGroupingResult.latencyMs} ms)
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                        Mode Kamus Lokal (Fallback)
+                      </span>
+                    )}
+                  </div>
                   <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                     {aiGroupingResult.cmg}
                   </span>

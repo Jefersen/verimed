@@ -524,6 +524,8 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     onClose={() => setSelectedClaim(null)}
     onUpdateStatus={handleUpdateClaimStatus}
     onToggleTamper={handleToggleTamper}
+    onGoToAiSettings={() => setActiveTab("ai-settings")}
+    onShowToast={showToast}
     onOpenClarificationModal={(c) => {
       setSelectedClaim(null);
       if (!isAdmin) {

@@ -83,6 +83,7 @@ setInterval(() => {
 }, 5 * 60 * 1000).unref();
 
 app.use("/api/settings/ai", aiRateLimiter);
+app.use("/api/ai", aiRateLimiter);
 app.use("/api/auth", aiRateLimiter);
 
 const storedAiFile = readAiStoreFile();
@@ -112,13 +113,23 @@ let aiConfig = storedAiFile.aiConfig || {
   provider: "gemini",
   encryptedData: envGeminiKey ? encryptApiKey(envGeminiKey) : null,
   keyHint: envGeminiKey ? `\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022${envGeminiKey.slice(-4)}` : "",
-  activeModel: envGeminiKey ? "gemini-2.5-flash" : "",
+  activeModel: envGeminiKey ? "gemini-3.5-flash-lite" : "",
   connected: !!envGeminiKey,
   testedAt: envGeminiKey ? (/* @__PURE__ */ new Date()).toISOString() : void 0,
   isFromEnv: !!envGeminiKey,
   mode: envGeminiKey ? "ai" : "fallback",
-  availableModels: envGeminiKey ? ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.5-pro", "gemini-1.5-pro"] : []
+  availableModels: envGeminiKey ? ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-flash-latest"] : []
 };
+if (aiConfig && Array.isArray(aiConfig.availableModels)) {
+  const nonTextKeywords = ["argon", "lyria", "robotics", "banana", "tts", "clip", "imagen", "embedding", "aqa", "image", "transcribe", "computer-use", "customtools", "audio"];
+  aiConfig.availableModels = aiConfig.availableModels.filter(
+    (m) => !nonTextKeywords.some((kw) => m.toLowerCase().includes(kw))
+  );
+  if (aiConfig.activeModel === "gemini-3.5-flash" || aiConfig.activeModel === "gemini-2.5-flash") {
+    aiConfig.activeModel = "gemini-3.5-flash-lite";
+    writeAiStoreFile({ aiConfig });
+  }
+}
 function validateBaseUrl(inputUrl, defaultUrl = "http://localhost:11434/v1") {
   if (!inputUrl || typeof inputUrl !== "string" || !inputUrl.trim()) {
     return { valid: true, url: defaultUrl };
@@ -174,7 +185,12 @@ async function fetchProviderModels(provider, apiKey, baseUrl) {
         "clip",
         "imagen",
         "embedding",
-        "aqa"
+        "aqa",
+        "image",
+        "transcribe",
+        "computer-use",
+        "customtools",
+        "audio"
       ];
       const geminiModels = data.models.filter((m) => {
         const methods = m.supportedGenerationMethods || [];
@@ -186,12 +202,17 @@ async function fetchProviderModels(provider, apiKey, baseUrl) {
         return true;
       });
       const priorityOrder = [
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+        "gemini-3.8-flash",
+        "gemini-flash-latest",
+        "gemma-4-26b-a4b-it",
+        "gemini-3.6-flash",
+        "gemini-3.7-flash",
+        "gemini-3.5-flash",
+        "gemini-3.1-flash-lite",
         "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-2.5-pro",
-        "gemini-1.5-pro",
-        "gemini-1.5-flash-8b"
+        "gemini-2.5-pro"
       ];
       geminiModels.sort((a, b) => {
         const idxA = priorityOrder.indexOf(a);
@@ -268,39 +289,51 @@ async function fetchProviderModels(provider, apiKey, baseUrl) {
 async function testModelLive(provider, apiKey, model, baseUrl) {
   const startTime = Date.now();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 12e3);
+  const timeout = setTimeout(() => controller.abort(), 35e3);
   try {
     if (provider === "gemini") {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: 'Halo. Konfirmasi status sistem VeriMed: respon singkat kata "AKTIF".' }]
+      let res;
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: "Verifikasi sistem VeriMed: respon singkat kata AKTIF." }]
+              }
+            ],
+            generationConfig: {
+              maxOutputTokens: 1024,
+              temperature: 0.1
             }
-          ],
-          generationConfig: {
-            maxOutputTokens: 25,
-            temperature: 0.1
-          }
-        }),
-        signal: controller.signal
-      });
+          }),
+          signal: controller.signal
+        });
+        if (res.status !== 503 && res.status !== 429) break;
+        console.warn(`[AI Test] ${model} mengembalikan HTTP ${res.status}, mencoba ulang (${attempt}/3)...`);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
       clearTimeout(timeout);
       const latencyMs = Date.now() - startTime;
-      if (!res.ok) {
-        const data2 = await res.json().catch(() => ({}));
-        const msg = data2?.error?.message || `Google Gemini API mengembalikan kode ${res.status}`;
+      if (!res || !res.ok) {
+        const data2 = res ? await res.json().catch(() => ({})) : {};
+        const status = res ? res.status : 500;
+        const msg = data2?.error?.message || `Google Gemini API mengembalikan kode ${status}`;
+        const isBusy = status === 503 || status === 429;
         return {
           success: false,
-          error: `Model ${model} tidak dapat diakses atau gagal merespons: ${msg}`
+          status,
+          error: isBusy
+            ? `Model ${model} saat ini sedang mengalami lonjakan beban (HTTP 503 High Demand) di server Google. Harap coba beberapa saat lagi atau pilih model flash-lite.`
+            : `Model ${model} tidak dapat diakses atau gagal merespons: ${msg}`
         };
       }
       const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Model terverifikasi.";
+      const parts = data?.candidates?.[0]?.content?.parts || [];
+      const text = parts.filter((p) => typeof p.text === "string" && !p.thought).map((p) => p.text).join("").trim() || "Model terverifikasi.";
       return {
         success: true,
         latencyMs,
@@ -585,6 +618,8 @@ app.post("/api/settings/ai/test", requireAdmin, async (req, res) => {
   }
   const testTimestamp = (/* @__PURE__ */ new Date()).toISOString();
   aiConfig.testedAt = testTimestamp;
+  aiConfig.activeModel = modelToTest;
+  writeAiStoreFile({ aiConfig });
   res.json({
     success: true,
     latencyMs: testResult.latencyMs,
@@ -593,12 +628,30 @@ app.post("/api/settings/ai/test", requireAdmin, async (req, res) => {
     testedAt: testTimestamp,
     sampleOutput: {
       responseSnippet: testResult.outputSnippet,
-      diagnoses: [{ code: "A91", name: "Dengue Hemorrhagic Fever", quote: "demam tinggi disertai nyeri sendi" }],
-      confidence: 0.96,
+      diagnoses: [{ code: "A91", name: "Dengue Hemorrhagic Fever", quote: testResult.outputSnippet }],
+      confidence: 0.98,
       mode: aiConfig.mode
     }
   });
 });
+// Ganti model aktif tanpa memasukkan ulang API Key (dipanggil saat dropdown model diubah)
+app.post("/api/settings/ai/model", requireAdmin, (req, res) => {
+  const { model } = req.body || {};
+  if (!model || typeof model !== "string") {
+    return res.status(400).json({ success: false, error: "Nama model wajib diisi." });
+  }
+  if (!aiConfig.encryptedData) {
+    return res.status(400).json({ success: false, error: "API Key belum dihubungkan. Hubungkan API Key terlebih dahulu." });
+  }
+  if (Array.isArray(aiConfig.availableModels) && aiConfig.availableModels.length > 0 && !aiConfig.availableModels.includes(model)) {
+    return res.status(400).json({ success: false, error: `Model ${model} tidak ada di daftar model terdeteksi untuk API Key ini.` });
+  }
+  aiConfig.activeModel = model;
+  writeAiStoreFile({ aiConfig });
+  console.log(`[AI] Model aktif diganti ke: ${model}`);
+  res.json({ success: true, activeModel: model, message: `Model aktif diganti ke ${model}.` });
+});
+
 app.delete("/api/settings/ai", requireAdmin, (req, res) => {
   aiConfig = {
     provider: "gemini",
@@ -625,6 +678,587 @@ app.delete("/api/settings/ai", requireAdmin, (req, res) => {
       mode: "fallback",
       isFromEnv: false
     }
+  });
+});
+
+// ============================================================================
+// REAL LLM INFERENCE ENGINE & ENDPOINTS (VeriMed AI Co-Pilot & Auto-Grouper)
+// ============================================================================
+
+function extractJsonFromText(rawText) {
+  if (!rawText || typeof rawText !== "string") return null;
+  const trimmed = rawText.trim();
+  const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fencedMatch ? fencedMatch[1].trim() : trimmed;
+  try {
+    return JSON.parse(candidate);
+  } catch {
+    const firstBrace = candidate.indexOf("{");
+    const lastBrace = candidate.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(candidate.slice(firstBrace, lastBrace + 1));
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+async function callActiveLlm({ systemPrompt, userPrompt, temperature = 0.75, maxTokens = 1200, clientConfig }) {
+  let provider = clientConfig?.provider || aiConfig.provider || "gemini";
+  let rawKey = "";
+  let model = clientConfig?.model || aiConfig.activeModel || "";
+  let baseUrl = clientConfig?.baseUrl || aiConfig.baseUrl || "";
+
+  if (clientConfig && typeof clientConfig.apiKey === "string" && clientConfig.apiKey.trim()) {
+    rawKey = clientConfig.apiKey.trim();
+  } else if (aiConfig.encryptedData) {
+    try {
+      rawKey = decryptApiKey(aiConfig.encryptedData);
+    } catch {
+      rawKey = "";
+    }
+  }
+
+  // Always keep server aiConfig synchronized with the user's latest selected model, provider & key
+  if (rawKey) {
+    const prevKey = aiConfig.encryptedData ? (() => {
+      try { return decryptApiKey(aiConfig.encryptedData); } catch { return ""; }
+    })() : "";
+    const keyChanged = rawKey !== prevKey;
+    const modelChanged = model && model !== aiConfig.activeModel;
+    const providerChanged = provider && provider !== aiConfig.provider;
+
+    if (keyChanged || modelChanged || providerChanged || !aiConfig.connected) {
+      const encrypted = keyChanged || !aiConfig.encryptedData ? encryptApiKey(rawKey) : aiConfig.encryptedData;
+      aiConfig = {
+        ...aiConfig,
+        provider,
+        encryptedData: encrypted,
+        keyHint: `\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022${rawKey.slice(-4)}`,
+        activeModel: model || aiConfig.activeModel || "gemini-3.8-flash",
+        baseUrl: baseUrl || aiConfig.baseUrl || void 0,
+        connected: true,
+        mode: "ai",
+        availableModels: aiConfig.availableModels?.length ? aiConfig.availableModels : (model ? [model] : [])
+      };
+      writeAiStoreFile({ aiConfig });
+    }
+  }
+
+  if (!rawKey && provider !== "compat") {
+    return {
+      success: false,
+      code: "NO_API_KEY",
+      error: "API Key AI belum dimasukkan atau belum dihubungkan. Silakan masuk ke menu Konfigurasi AI (peran Admin) dan simpan API Key terlebih dahulu."
+    };
+  }
+
+  if (!model) {
+    model = provider === "gemini" ? "gemini-3.8-flash" : provider === "openai" ? "gpt-4o-mini" : provider === "anthropic" ? "claude-3-5-haiku-20241022" : "custom-model";
+  }
+
+  const startTime = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 120000);
+
+  try {
+    if (provider === "gemini") {
+      const requestBody = JSON.stringify({
+        systemInstruction: systemPrompt ? { parts: [{ text: systemPrompt }] } : void 0,
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: userPrompt }]
+          }
+        ],
+        generationConfig: {
+          temperature,
+          // Model Gemini modern memakai "thinking tokens" yang ikut memotong kuota output.
+          // Kuota dibuat lega agar JSON jawaban tidak terpotong di tengah.
+          maxOutputTokens: Math.max(maxTokens, 8192),
+          responseMimeType: "application/json"
+        }
+      });
+
+      // Utamakan model yang dipilih pengguna (model), dengan retry hingga 3x jika server Google sedang 503/429
+      let res = null;
+      let usedModel = model;
+      let isFailover = false;
+
+      // Coba model pilihan pengguna terlebih dahulu (hingga 3 percobaan)
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const attemptCtrl = new AbortController();
+        const attemptTimer = setTimeout(() => attemptCtrl.abort(), 25000);
+        try {
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(rawKey)}`;
+          res = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: requestBody,
+            signal: attemptCtrl.signal
+          });
+          clearTimeout(attemptTimer);
+          if (res.ok) {
+            usedModel = model;
+            break;
+          }
+          if (res.status !== 503 && res.status !== 429) {
+            // Jika error selain overload (misal 404 not found / 400), jangan retry model yang sama
+            break;
+          }
+          console.warn(`[AI] Model ${model} mengembalikan HTTP ${res.status}, mencoba ulang percobaan ke-${attempt}/3...`);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1500 * attempt));
+        } catch (attemptErr) {
+          clearTimeout(attemptTimer);
+          console.warn(`[AI] Model ${model} batas waktu habis pada percobaan ke-${attempt}/3...`);
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
+
+      // Jika model pilihan pengguna tetap gagal (misal 503 berturut-turut atau 404), gunakan cadangan HANYA untuk permintaan ini
+      // PENTING: Pengaturan model pengguna di sistem TIDAK PERNAH ditimpa/diubah!
+      if (!res || !res.ok) {
+        const backupModels = ["gemini-3.5-flash-lite", "gemini-flash-lite-latest", "gemma-4-26b-a4b-it"].filter((m) => m !== model);
+        for (const backup of backupModels) {
+          console.warn(`[AI] Menggunakan model cadangan sementara ${backup} untuk permintaan ini...`);
+          const backupCtrl = new AbortController();
+          const backupTimer = setTimeout(() => backupCtrl.abort(), 15000);
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(backup)}:generateContent?key=${encodeURIComponent(rawKey)}`;
+            const backupRes = await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: requestBody,
+              signal: backupCtrl.signal
+            });
+            clearTimeout(backupTimer);
+            if (backupRes.ok) {
+              res = backupRes;
+              usedModel = backup;
+              isFailover = true;
+              break;
+            }
+          } catch {
+            clearTimeout(backupTimer);
+          }
+        }
+      }
+
+      clearTimeout(timeout);
+      const latencyMs = Date.now() - startTime;
+      if (!res || !res.ok) {
+        const errData = res ? await res.json().catch(() => ({})) : {};
+        const status = res ? res.status : 500;
+        const msg = errData?.error?.message || `Google Gemini API mengembalikan status ${status}`;
+        console.warn(`[AI] Gagal ${usedModel}: ${status} ${msg}`);
+        return {
+          success: false,
+          code: status === 503 || status === 429 ? "MODEL_BUSY" : "PROVIDER_ERROR",
+          provider,
+          model: usedModel,
+          requestedModel: model,
+          error: `Model ${model} sedang mengalami lonjakan beban tinggi (HTTP ${status}) di server Google Gemini. Silakan coba klik Analisis Ulang kembali.`
+        };
+      }
+
+      const data = await res.json();
+      const candidate = data?.candidates?.[0];
+      // Gabungkan semua bagian teks (abaikan bagian "thought" internal model)
+      const text = (candidate?.content?.parts || [])
+        .filter((p) => typeof p.text === "string" && !p.thought)
+        .map((p) => p.text)
+        .join("")
+        .trim();
+      console.log(
+        `[AI] ${usedModel} OK ${latencyMs}ms finish=${candidate?.finishReason} out=${data?.usageMetadata?.candidatesTokenCount} thoughts=${data?.usageMetadata?.thoughtsTokenCount || 0}`
+      );
+      if (!text) {
+        return {
+          success: false,
+          code: "EMPTY_RESPONSE",
+          provider,
+          model: usedModel,
+          error: `Model ${usedModel} mengembalikan respons kosong (finishReason: ${candidate?.finishReason || "-"}).`
+        };
+      }
+      return {
+        success: true,
+        provider,
+        model: usedModel,
+        requestedModel: model,
+        isFailover,
+        latencyMs,
+        rawText: text,
+        parsed: extractJsonFromText(text)
+      };
+    }
+
+    if (provider === "openai" || provider === "compat") {
+      let url = "https://api.openai.com/v1/chat/completions";
+      if (provider === "compat" || baseUrl) {
+        const urlCheck = validateBaseUrl(baseUrl, provider === "compat" ? "http://localhost:11434/v1" : "https://api.openai.com/v1");
+        if (!urlCheck.valid) {
+          clearTimeout(timeout);
+          return { success: false, code: "INVALID_URL", error: urlCheck.error };
+        }
+        url = `${urlCheck.url}/chat/completions`;
+      }
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(rawKey ? { Authorization: `Bearer ${rawKey}` } : {})
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            ...(systemPrompt ? [{ role: "system", content: systemPrompt }] : []),
+            { role: "user", content: userPrompt }
+          ],
+          temperature,
+          max_tokens: maxTokens
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return {
+          success: false,
+          code: "PROVIDER_ERROR",
+          provider,
+          model,
+          error: `Error dari ${provider.toUpperCase()} (${res.status}): ${errData?.error?.message || "Gagal memproses prompt."}`
+        };
+      }
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content?.trim() || "";
+      return {
+        success: true,
+        provider,
+        model,
+        latencyMs,
+        rawText: text,
+        parsed: extractJsonFromText(text)
+      };
+    }
+
+    if (provider === "anthropic") {
+      const url = "https://api.anthropic.com/v1/messages";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": rawKey,
+          "anthropic-version": "2023-06-01"
+        },
+        body: JSON.stringify({
+          model,
+          system: systemPrompt || void 0,
+          messages: [{ role: "user", content: userPrompt }],
+          temperature,
+          max_tokens: maxTokens
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeout);
+      const latencyMs = Date.now() - startTime;
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        return {
+          success: false,
+          code: "PROVIDER_ERROR",
+          provider,
+          model,
+          error: `Anthropic API error (${res.status}): ${errData?.error?.message || "Gagal memproses prompt."}`
+        };
+      }
+      const data = await res.json();
+      const text = data?.content?.[0]?.text?.trim() || "";
+      return {
+        success: true,
+        provider,
+        model,
+        latencyMs,
+        rawText: text,
+        parsed: extractJsonFromText(text)
+      };
+    }
+
+    clearTimeout(timeout);
+    return { success: false, code: "UNSUPPORTED_PROVIDER", error: "Provider AI tidak dikenali." };
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err.name === "AbortError") {
+      return {
+        success: false,
+        code: "TIMEOUT",
+        provider,
+        model,
+        error: `Waktu tunggu panggilan AI habis (Timeout 120s) pada model ${model}. Model mungkin sedang sibuk, coba lagi atau pilih model yang lebih ringan (misal varian "flash-lite").`
+      };
+    }
+    return {
+      success: false,
+      code: "NETWORK_ERROR",
+      provider,
+      model,
+      error: `Gagal menghubungi layanan AI (${provider}): ${err.message}`
+    };
+  }
+}
+
+app.get("/api/ai/status", (req, res) => {
+  res.json({
+    connected: aiConfig.connected && !!aiConfig.encryptedData,
+    provider: aiConfig.provider,
+    activeModel: aiConfig.activeModel,
+    keyHint: aiConfig.keyHint,
+    mode: aiConfig.connected && !!aiConfig.encryptedData ? "ai" : "fallback"
+  });
+});
+
+app.post("/api/ai/analyze-claim", async (req, res) => {
+  const { claim, reanalyzeCount = 1, clientConfig } = req.body || {};
+  if (!claim) {
+    return res.status(400).json({ success: false, error: "Data klaim tidak ditemukan." });
+  }
+
+  const vaultLeaf2 = claim.seal?.leaves?.find((l) => l.id === "L2")?.dataSnippet || "Tidak tersedia";
+  const vaultLeaf3 = claim.seal?.leaves?.find((l) => l.id === "L3")?.dataSnippet || "Tidak tersedia";
+  const currentItemsText = (claim.items || [])
+    .map((it) => `${it.code}: ${it.description} (Rp ${Number(it.amount || 0).toLocaleString("id-ID")})`)
+    .join("; ");
+  const labRefsText = (claim.labRefs || [])
+    .map((lb) => `${lb.testName}: ${lb.value} ${lb.unit} (ID: ${lb.labResultId})`)
+    .join("; ") || "Tidak ada hasil lab terikat";
+  const findingsText = (claim.findings || [])
+    .map((f) => `[${f.ruleId}] ${f.title}: ${f.description} (Vault: ${f.evidence?.vaultValue || "-"} | Klaim: ${f.evidence?.claimedValue || "-"})`)
+    .join("\n") || "Tidak ada pelanggaran aturan.";
+
+  const styleAngles = [
+    "Fokuskan gaya bahasa pada audit forensik kriptografi & kepatuhan regulasi klaim JKN-BPJS.",
+    "Gunakan gaya bahasa auditor medis senior yang tajam, lugas, dan membedah bukti klinis vs rincian tagihan secara kontras.",
+    "Sajikan dengan narasi investigasi verifikator klaim rumah sakit yang menyoroti risiko finansial, dampak integritas Merkle Tree, dan bukti objektif laboratorium.",
+    "Gunakan sudut pandang konsultan Casemix INA-CBG & keamanan siber medis yang menguraikan kronologi anomali secara sistematis."
+  ];
+  const chosenAngle = styleAngles[(reanalyzeCount - 1) % styleAngles.length];
+
+  const systemPrompt = `Anda adalah VeriMed AI Co-Pilot, sistem kecerdasan buatan audit klinis JKN-BPJS (Permenkes No. 3/2023) dan forensik kriptografi (SHA-256 Merkle Tree & tanda tangan digital Ed25519).
+Tugas Anda: Menganalisis data klaim rumah sakit berikut dan menghasilkan penjelasan mendalam dalam format JSON murni.
+Penting: Ini adalah pemanggilan analisis ke-${reanalyzeCount} (Timestamp: ${new Date().toISOString()}). ${chosenAngle} Susun kalimat yang segar, spesifik pada angka/item klaim ini, dan JANGAN menyalin kalimat template kaku.`;
+
+  const userPrompt = `Analisis klaim berikut secara menyeluruh:
+- Nomor Klaim: #${claim.claimNumber} (${claim.facilityName})
+- Paket INA-CBG: ${claim.inacbgCode} (${claim.inacbgDescription || ""}) | Severity: Level ${claim.severity}
+- Diagnosis Primer: ${claim.primaryDiagnosis?.name} (${claim.primaryDiagnosis?.code})
+- Lama Rawat (LOS): ${claim.losDays} hari | Total Tagihan: Rp ${Number(claim.billedAmount || 0).toLocaleString("id-ID")}
+- Status Integritas Segel Kriptografis: ${claim.isTampered ? `RUSAK / TAMPERED (${claim.tamperReason || "Hash daun Merkle berubah pasca-segel"})` : "UTUH & VALID (100% cocok dengan segel Ed25519 Vault)"}
+- Data Asli Leaf #2 di Segel Vault: ${vaultLeaf2}
+- Data Asli Leaf #3 di Segel Vault: ${vaultLeaf3}
+- Rincian Item Tagihan Saat Ini: ${currentItemsText}
+- Resume Medis Saat Ini: "${claim.resumeText}"
+- Bukti Lab/Mesin di Vault: ${labRefsText}
+- Temuan Rule Engine (${(claim.findings || []).length} temuan):
+${findingsText}
+
+Kembalikan HANYA objek JSON valid dengan struktur persis berikut:
+{
+  "badgeText": "Label singkat status AI (maks 6 kata, misal: 'Audit Live AI: Manipulasi Segel Terdeteksi' atau 'Audit Live AI: Indikasi Upcoding/Unbundling' atau 'Audit Live AI: Klaim Valid & Lengkap')",
+  "summary": "Ringkasan eksekutif 2 kalimat yang menjelaskan kesimpulan utama AI secara spesifik terhadap klaim #${claim.claimNumber}.",
+  "details": [
+    {
+      "title": "1. [Judul poin 1 sesuai kasus: misal Apa yang Dimanipulasi / Analisis Klinis & Bukti Lab]",
+      "text": "Penjelasan spesifik menyebutkan item/angka/nilai lab pada klaim ini."
+    },
+    {
+      "title": "2. [Judul poin 2: misal Mekanisme Deteksi Kriptografi / Evaluasi Kepatuhan Tarif INA-CBG]",
+      "text": "Penjelasan mengapa hal ini terdeteksi oleh Merkle Tree SHA-256 atau aturan Permenkes No. 3/2023."
+    },
+    {
+      "title": "3. Rekomendasi Tindakan untuk Verifikator",
+      "text": "Langkah konkret yang harus diambil verifikator (Setujui / Minta Klarifikasi / Tolak Salinan Tamper)."
+    }
+  ],
+  "findingExplanations": {
+    "KODE_RULE_JIKA_ADA": "Penjelasan baru dari AI mengapa temuan rule ini tidak wajar secara klinis/kriptografis."
+  },
+  "suggestedNote": "1-2 kalimat draft catatan verifikator resmi untuk dikirim ke faskes."
+}`;
+
+  const llmResult = await callActiveLlm({
+    systemPrompt,
+    userPrompt,
+    temperature: reanalyzeCount > 1 ? 0.88 : 0.72,
+    maxTokens: 1200,
+    clientConfig
+  });
+
+  if (!llmResult.success) {
+    return res.status(400).json({
+      success: false,
+      code: llmResult.code,
+      error: llmResult.error,
+      provider: llmResult.provider,
+      model: llmResult.model
+    });
+  }
+
+  const parsed = llmResult.parsed;
+  if (!parsed || !parsed.summary || !Array.isArray(parsed.details)) {
+    return res.status(400).json({
+      success: false,
+      code: "PARSE_ERROR",
+      error: "Respons dari model AI tidak sesuai format JSON yang diharapkan. Silakan coba klik Analisis Ulang kembali.",
+      rawSnippet: llmResult.rawText?.slice(0, 200)
+    });
+  }
+
+  return res.json({
+    success: true,
+    provider: llmResult.provider,
+    model: llmResult.model,
+    requestedModel: llmResult.requestedModel,
+    isFailover: !!llmResult.isFailover,
+    latencyMs: llmResult.latencyMs,
+    analyzedAt: new Date().toISOString(),
+    reanalyzeCount,
+    reasoning: {
+      badgeText: parsed.badgeText || `Analisis Live AI (${llmResult.model})`,
+      summary: parsed.summary,
+      details: parsed.details.slice(0, 4),
+      findingExplanations: parsed.findingExplanations || {},
+      suggestedNote: parsed.suggestedNote || ""
+    }
+  });
+});
+
+app.post("/api/ai/group-inacbg", async (req, res) => {
+  const { query, severity = 1, clientConfig } = req.body || {};
+  if (!query || !String(query).trim()) {
+    return res.status(400).json({ success: false, error: "Keluhan atau nama penyakit wajib diisi." });
+  }
+
+  const rom = severity === 3 || severity === 4 ? "III" : severity === 2 ? "II" : "I";
+  const systemPrompt = `Anda adalah Sistem AI Auto-Grouper INA-CBG JKN-BPJS Kesehatan sesuai Standar Tarif Permenkes RI No. 3 Tahun 2023 dan ICD-10.
+Tugas Anda adalah memetakan keluhan klinis, penyakit, atau tindakan medis yang diketik petugas rumah sakit ke dalam kode ICD-10, Casemix Main Group (CMG), kode paket INA-CBG (format: [Huruf CMG]-[Digit Tipe 1 untuk Prosedur Bedah / 4 untuk Rawat Inap Non-Bedah]-[2 digit kelompok]-[Romawi Severity I/II/III]), estimasi tarif paket BPJS yang realistis (dalam Rupiah), serta draf resume medis klinis.`;
+
+  const userPrompt = `Petakan input penyakit/tindakan berikut ke paket INA-CBG BPJS Kesehatan:
+- Input Keluhan / Penyakit / Tindakan: "${String(query).trim()}"
+- Tingkat Keparahan (Severity) yang dipilih: Severity ${severity} (Romawi: ${rom})
+
+Kembalikan HANYA objek JSON valid dengan struktur persis berikut:
+{
+  "code": "Kode INA-CBG berakhiran -${rom} (contoh: A-4-14-${rom} atau I-4-10-${rom} atau M-1-50-${rom})",
+  "name": "Nama Paket INA-CBG Bahasa Indonesia yang spesifik dan resmi",
+  "defaultSev": ${Number(severity) || 1},
+  "defaultAmount": 5500000,
+  "dxCode": "Kode ICD-10 Primer yang akurat (contoh: A01.0, E11.9, J45.9, I63.9)",
+  "dxName": "Nama Diagnosis ICD-10 resmi",
+  "cmg": "Nama CMG (contoh: CMG A — Penyakit Infeksi & Parasit Sistemik)",
+  "resume": "Paragraf resume medis klinis (2-3 kalimat) yang memuat keluhan utama, pemeriksaan fisik/penunjang, dan terapi yang diberikan sesuai standar klaim BPJS.",
+  "aiReason": "Penjelasan singkat (2 kalimat) dari AI mengapa keluhan tersebut dipetakan ke ICD-10, CMG, dan kode tarif INA-CBG tersebut berdasarkan Permenkes No. 3/2023."
+}`;
+
+  const llmResult = await callActiveLlm({
+    systemPrompt,
+    userPrompt,
+    temperature: 0.65,
+    maxTokens: 900,
+    clientConfig
+  });
+
+  if (!llmResult.success) {
+    return res.status(400).json({
+      success: false,
+      code: llmResult.code,
+      error: llmResult.error,
+      provider: llmResult.provider,
+      model: llmResult.model
+    });
+  }
+
+  const parsed = llmResult.parsed;
+  if (!parsed || !parsed.code || !parsed.dxCode) {
+    return res.status(400).json({
+      success: false,
+      code: "PARSE_ERROR",
+      error: "Format JSON hasil grouping AI tidak lengkap."
+    });
+  }
+
+  return res.json({
+    success: true,
+    provider: llmResult.provider,
+    model: llmResult.model,
+    latencyMs: llmResult.latencyMs,
+    grouped: {
+      code: String(parsed.code).toUpperCase(),
+      name: parsed.name || `Paket INA-CBG ${parsed.code}`,
+      defaultSev: Number(parsed.defaultSev) || Number(severity) || 1,
+      defaultAmount: Number(parsed.defaultAmount) || 4850000,
+      dxCode: String(parsed.dxCode).toUpperCase(),
+      dxName: parsed.dxName || String(query).trim(),
+      cmg: parsed.cmg || "CMG — Kelompok Kasus Medis JKN",
+      resume: parsed.resume || "",
+      aiReason: parsed.aiReason || ""
+    }
+  });
+});
+
+app.post("/api/ai/draft-note", async (req, res) => {
+  const { claim, role = "admin", clientConfig } = req.body || {};
+  if (!claim) {
+    return res.status(400).json({ success: false, error: "Data klaim wajib disertakan." });
+  }
+
+  const findingsSummary = (claim.findings || [])
+    .map((f) => `${f.ruleId} (${f.title}): ${f.description}`)
+    .join("; ") || "Tidak ada temuan pelanggaran.";
+
+  const systemPrompt = role === "admin"
+    ? "Anda adalah Verifikator Senior BPJS Kesehatan pada sistem VeriMed. Buat 1 paragraf (2-3 kalimat) catatan telaah verifikator / permintaan klarifikasi yang sopan, tegas, dan spesifik merujuk pada temuan klaim."
+    : "Anda adalah Dokter Penanggung Jawab Pelayanan (DPJP) / Tim Casemix RS pada sistem VeriMed. Buat 1 paragraf (2-3 kalimat) tanggapan klarifikasi klinis yang profesional untuk menjawab pertanyaan verifikator berdasarkan data resume dan lab.";
+
+  const userPrompt = `Data Klaim #${claim.claimNumber} (${claim.facilityName}):
+- Diagnosis: ${claim.primaryDiagnosis?.name} (${claim.primaryDiagnosis?.code}) | Paket: ${claim.inacbgCode} (Sev ${claim.severity})
+- Tagihan: Rp ${Number(claim.billedAmount || 0).toLocaleString("id-ID")}
+- Resume Medis: "${claim.resumeText}"
+- Temuan Aturan: ${findingsSummary}
+- Pertanyaan Verifikator sebelumnya: "${claim.clarifications?.[0]?.question || claim.clarificationHistory?.slice(-1)?.[0]?.message || "-"}"
+
+Kembalikan HANYA JSON valid:
+{
+  "note": "Teks catatan/tanggapan siap kirim (2-3 kalimat bahasa Indonesia medis yang lugas dan spesifik)"
+}`;
+
+  const llmResult = await callActiveLlm({
+    systemPrompt,
+    userPrompt,
+    temperature: 0.78,
+    maxTokens: 500,
+    clientConfig
+  });
+
+  if (!llmResult.success) {
+    return res.status(400).json({
+      success: false,
+      code: llmResult.code,
+      error: llmResult.error
+    });
+  }
+
+  const noteText = llmResult.parsed?.note || llmResult.rawText?.replace(/```json|```/g, "").trim();
+  return res.json({
+    success: true,
+    provider: llmResult.provider,
+    model: llmResult.model,
+    latencyMs: llmResult.latencyMs,
+    note: noteText
   });
 });
 async function startServer() {

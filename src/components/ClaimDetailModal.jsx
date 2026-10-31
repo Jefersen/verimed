@@ -20,6 +20,12 @@ import {
 import { motion } from "motion/react";
 import { buildClaimLeaves, verifySealLeaves } from "../utils/crypto";
 import { generateAiClaimReasoning } from "../utils/rules";
+import {
+  fetchAiStatus,
+  getSavedClientAiConfig,
+  requestAiClaimAnalysis,
+  requestAiDraftNote
+} from "../utils/aiClient";
 const ClaimDetailModal = ({
   claim,
   currentUser,
@@ -27,7 +33,9 @@ const ClaimDetailModal = ({
   onUpdateStatus,
   onToggleTamper,
   onRequestClarification,
-  onOpenClarificationModal
+  onOpenClarificationModal,
+  onGoToAiSettings,
+  onShowToast
 }) => {
   const isAdmin = currentUser.role === "admin";
   const [activeTab, setActiveTab] = useState(isAdmin ? "rules" : "billing_resume");
@@ -35,12 +43,102 @@ const ClaimDetailModal = ({
   const [clarificationText, setClarificationText] = useState("");
   const [copiedHash, setCopiedHash] = useState(null);
   const [isAiScanning, setIsAiScanning] = useState(false);
-  const aiReasoning = generateAiClaimReasoning(claim);
-  const handleRunAiScan = () => {
+  const [isDraftingNote, setIsDraftingNote] = useState(false);
+  const [liveAiData, setLiveAiData] = useState(null);
+  const [aiError, setAiError] = useState(null);
+  const [reanalyzeCount, setReanalyzeCount] = useState(0);
+
+  const staticReasoning = generateAiClaimReasoning(claim);
+  const aiReasoning = liveAiData?.reasoning || staticReasoning;
+
+  // Auto-check AI status on open or when claim/tamper state changes
+  useEffect(() => {
+    let cancelled = false;
+    setLiveAiData(null);
+    setAiError(null);
+    setReanalyzeCount(0);
+
+    async function initAiCheck() {
+      const localCfg = getSavedClientAiConfig();
+      const status = await fetchAiStatus();
+      if (cancelled) return;
+
+      if (status.connected || localCfg?.apiKey) {
+        setIsAiScanning(true);
+        const res = await requestAiClaimAnalysis(claim, 1);
+        if (cancelled) return;
+        setIsAiScanning(false);
+        if (res.success) {
+          setLiveAiData(res);
+          setReanalyzeCount(1);
+          setAiError(null);
+        } else {
+          setAiError({
+            code: res.code,
+            message: res.error
+          });
+        }
+      } else {
+        setAiError({
+          code: "NO_API_KEY",
+          message:
+            "API Key AI belum dimasukkan atau belum dihubungkan. Saat ini sistem menampilkan hasil Rule Engine statis lokal. Silakan masukkan API Key di menu Konfigurasi AI agar analisis memanggil model LLM secara nyata."
+        });
+      }
+    }
+
+    initAiCheck();
+    return () => {
+      cancelled = true;
+    };
+  }, [claim.id, claim.isTampered, claim.currentVersion]);
+
+  const handleRunAiScan = async () => {
     setIsAiScanning(true);
-    setTimeout(() => {
-      setIsAiScanning(false);
-    }, 650);
+    setAiError(null);
+    const nextCount = reanalyzeCount + 1;
+    const res = await requestAiClaimAnalysis(claim, nextCount);
+    setIsAiScanning(false);
+
+    if (res.success) {
+      setLiveAiData(res);
+      setReanalyzeCount(nextCount);
+      setAiError(null);
+      if (onShowToast) {
+        onShowToast(
+          `Analisis ulang AI ke-#${nextCount} berhasil diproses oleh ${res.model} (${res.latencyMs} ms).`,
+          "success"
+        );
+      }
+    } else {
+      setAiError({
+        code: res.code,
+        message: res.error
+      });
+      if (onShowToast) {
+        onShowToast(res.error, "error");
+      }
+    }
+  };
+
+  const handleDraftNoteWithAi = async () => {
+    setIsDraftingNote(true);
+    const res = await requestAiDraftNote(claim, "admin");
+    setIsDraftingNote(false);
+    if (res.success && res.note) {
+      setReviewerNote(res.note);
+      if (onShowToast) {
+        onShowToast(`Catatan verifikator disusun oleh AI (${res.model}).`, "success");
+      }
+    } else {
+      setAiError({
+        code: res.code,
+        message: res.error
+      });
+      if (onShowToast) {
+        onShowToast(res.error, "error");
+      }
+    }
   };
   const contentInnerRef = useRef(null);
   const [contentHeight, setContentHeight] = useState("auto");
@@ -306,9 +404,37 @@ const ClaimDetailModal = ({
                         <h4 className="text-xs sm:text-sm font-bold text-slate-900">
                           Diagnosis & Penjelasan AI (VeriMed AI Co-Pilot)
                         </h4>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-[#0E947A] border border-emerald-200">
-                          {aiReasoning.badgeText}
-                        </span>
+                        {liveAiData && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-[#0E947A] border border-emerald-200">
+                            {aiReasoning.badgeText}
+                          </span>
+                        )}
+                        {liveAiData ? (
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 ${
+                              liveAiData.isFailover
+                                ? "bg-amber-50 text-amber-900 border-amber-300"
+                                : "bg-teal-100/80 text-teal-900 border-teal-300"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                liveAiData.isFailover ? "bg-amber-500" : "bg-emerald-500 animate-pulse"
+                              }`}
+                            />
+                            {liveAiData.isFailover
+                              ? `Live LLM: ${liveAiData.model} (Cadangan Sementara: ${liveAiData.requestedModel} sedang 503)`
+                              : `Live LLM: ${liveAiData.model} (${(liveAiData.latencyMs / 1000).toFixed(1)} dtk) • Prompt #${liveAiData.reanalyzeCount}`}
+                          </span>
+                        ) : isAiScanning ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+                            Sedang memanggil model AI...
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            {aiError?.code === "NO_API_KEY" ? "API Key AI Belum Aktif" : "Jawaban AI Belum Tersedia"}
+                          </span>
+                        )}
                       </div>
                       <p className="text-[11px] text-slate-500">
                         Analisis otomatis alasan ketidakwajaran segel, bukti lab LIS, dan kepatuhan tarif INA-CBG
@@ -321,33 +447,112 @@ const ClaimDetailModal = ({
                     data-tour="modal-ai-reanalyze-btn"
                     onClick={handleRunAiScan}
                     disabled={isAiScanning}
-                    className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                    className="self-start sm:self-auto px-3 py-1.5 rounded-xl bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0E947A] border border-slate-200 hover:border-emerald-300 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 shadow-2xs"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 text-[#0E947A] ${isAiScanning ? "animate-spin" : ""}`} />
-                    <span>{isAiScanning ? "AI Sedang Menganalisis..." : "Analisis Ulang AI"}</span>
+                    <span>{isAiScanning ? "Memanggil LLM AI..." : "Analisis Ulang AI"}</span>
                   </button>
                 </div>
 
-                <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  {aiReasoning.summary}
-                </p>
-
-                <div className="space-y-2.5">
-                  {aiReasoning.details.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="p-3 rounded-xl bg-white border border-slate-200/80 space-y-1"
-                    >
-                      <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                        <Cpu className="w-3.5 h-3.5 text-[#0E947A] shrink-0" />
-                        <span>{item.title}</span>
-                      </p>
-                      <p className="text-xs text-slate-600 leading-relaxed pl-5">
-                        {item.text}
-                      </p>
+                {/* Clear Notice / Error Banner when AI is not connected or fails */}
+                {aiError && !isAiScanning && (
+                  <div className="p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold text-amber-900 text-[11px]">
+                          {aiError.code === "NO_API_KEY"
+                            ? "AI Belum Terpanggil: API Key Belum Dimasukkan"
+                            : "Panggilan ke Model AI Gagal"}
+                        </p>
+                        <p className="text-[11px] text-amber-800 leading-relaxed mt-0.5">
+                          {aiError.message}
+                        </p>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
+                      <button
+                        type="button"
+                        onClick={handleRunAiScan}
+                        className="px-3 py-1.5 rounded-lg bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-[11px] transition-colors cursor-pointer"
+                      >
+                        Coba Panggil Ulang
+                      </button>
+                      {isAdmin && onGoToAiSettings && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onClose();
+                            onGoToAiSettings();
+                          }}
+                          className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold text-[11px] transition-colors cursor-pointer"
+                        >
+                          Buka Konfigurasi AI
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {isAiScanning ? (
+                  <div className="p-6 rounded-xl bg-white border border-slate-200/80 flex flex-col items-center justify-center text-center space-y-2.5">
+                    <RefreshCw className="w-6 h-6 text-[#0E947A] animate-spin" />
+                    <p className="text-xs font-bold text-slate-800">
+                      Menghubungi Model AI & Menganalisis Klaim #{claim.claimNumber}...
+                    </p>
+                    <p className="text-[11px] text-slate-500 max-w-md">
+                      AI sedang memeriksa kecocokan hash 5 daun Merkle, rincian item tagihan, resume klinis, dan rujukan hasil lab secara real-time.
+                    </p>
+                  </div>
+                ) : liveAiData ? (
+                  <>
+                    <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                      {liveAiData.reasoning.summary}
+                    </p>
+
+                    <div className="space-y-2.5">
+                      {(liveAiData.reasoning.details || []).map((item, idx) => (
+                        <div
+                          key={idx}
+                          className="p-3 rounded-xl bg-white border border-slate-200/80 space-y-1"
+                        >
+                          <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                            <Cpu className="w-3.5 h-3.5 text-[#0E947A] shrink-0" />
+                            <span>{item.title}</span>
+                          </p>
+                          <p className="text-xs text-slate-600 leading-relaxed pl-5">
+                            {item.text}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
+
+                {isAdmin && liveAiData?.reasoning?.suggestedNote && (
+                  <div className="p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div>
+                      <span className="font-bold text-[#0E947A] text-[11px] block">
+                        Rekomendasi Draft Catatan Verifikator (oleh {liveAiData.model}):
+                      </span>
+                      <span className="text-slate-700 text-[11px] italic">
+                        "{liveAiData.reasoning.suggestedNote}"
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewerNote(liveAiData.reasoning.suggestedNote);
+                        if (onShowToast) {
+                          onShowToast("Draft catatan AI disalin ke kolom catatan verifikator.", "success");
+                        }
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg bg-[#0E947A] hover:bg-[#0B7A64] text-white font-semibold text-[11px] shrink-0 transition-colors cursor-pointer self-start sm:self-center"
+                    >
+                      Pakai Catatan Ini
+                    </button>
+                  </div>
+                )}
               </div>
 
               {
@@ -391,17 +596,24 @@ const ClaimDetailModal = ({
                         {finding.description}
                       </p>
 
-                      {finding.aiExplanation && (
+                      {liveAiData?.reasoning?.findingExplanations?.[finding.ruleId] ? (
                         <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 text-xs text-slate-800 space-y-1">
                           <p className="font-bold text-[#0E947A] flex items-center gap-1.5 text-[11px]">
                             <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                            <span>Penjelasan AI Mengapa Ini Tidak Wajar:</span>
+                            <span>
+                              Penjelasan AI Mengapa Ini Tidak Wajar (Live LLM: {liveAiData.model}):
+                            </span>
                           </p>
                           <p className="leading-relaxed text-slate-700">
-                            {finding.aiExplanation}
+                            {liveAiData.reasoning.findingExplanations[finding.ruleId]}
                           </p>
                         </div>
-                      )}
+                      ) : isAiScanning ? (
+                        <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-500 flex items-center gap-2">
+                          <RefreshCw className="w-3.5 h-3.5 text-[#0E947A] animate-spin shrink-0" />
+                          <span>Menunggu penjelasan spesifik AI untuk temuan {finding.ruleId}...</span>
+                        </div>
+                      ) : null}
 
                       {
     /* Evidence Trail Box (PRD 11.3: Setiap temuan menyimpan jejak bukti) */
@@ -593,21 +805,47 @@ const ClaimDetailModal = ({
 
                 {claim.isTampered && (
                   <div className="p-4 rounded-xl bg-rose-50/70 border border-rose-200 text-rose-900 text-xs space-y-2.5">
-                    <div className="flex items-center gap-2 font-bold text-rose-800">
-                      <Sparkles className="w-4 h-4 text-rose-600 shrink-0" />
-                      <span>Deteksi & Penjelasan Forensik AI (Mengapa Segel Tidak Cocok):</span>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 font-bold text-rose-800">
+                        <Sparkles className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>
+                          Deteksi & Penjelasan Forensik AI{" "}
+                          {liveAiData ? `(${liveAiData.model})` : ""}:
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRunAiScan}
+                        disabled={isAiScanning}
+                        className="px-2.5 py-1 rounded-lg bg-white hover:bg-rose-100 text-rose-800 border border-rose-200 text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${isAiScanning ? "animate-spin" : ""}`} />
+                        <span>{isAiScanning ? "Menganalisis..." : "Analisis Ulang AI"}</span>
+                      </button>
                     </div>
-                    <p className="text-slate-700 leading-relaxed font-medium">
-                      {aiReasoning.summary}
-                    </p>
-                    <div className="space-y-2 pt-1">
-                      {aiReasoning.details.map((d, i) => (
-                        <div key={i} className="p-2.5 rounded-lg bg-white border border-rose-200/70">
-                          <p className="font-bold text-slate-900 text-[11px]">{d.title}</p>
-                          <p className="text-slate-600 mt-0.5 leading-relaxed text-[11px]">{d.text}</p>
+                    {isAiScanning ? (
+                      <p className="text-slate-600 italic text-[11px]">
+                        Sedang memanggil model AI untuk menganalisis perubahan daun Merkle...
+                      </p>
+                    ) : liveAiData ? (
+                      <>
+                        <p className="text-slate-700 leading-relaxed font-medium">
+                          {liveAiData.reasoning.summary}
+                        </p>
+                        <div className="space-y-2 pt-1">
+                          {(liveAiData.reasoning.details || []).map((d, i) => (
+                            <div key={i} className="p-2.5 rounded-lg bg-white border border-rose-200/70">
+                              <p className="font-bold text-slate-900 text-[11px]">{d.title}</p>
+                              <p className="text-slate-600 mt-0.5 leading-relaxed text-[11px]">{d.text}</p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </>
+                    ) : (
+                      <p className="text-amber-900 text-[11px]">
+                        {aiError?.message || "Klik Analisis Ulang AI untuk memanggil penjelasan forensik dari model LLM."}
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -860,14 +1098,24 @@ const ClaimDetailModal = ({
     /* Action Panel Footer */
   }
         {isAdmin ? <div className="p-4 sm:p-5 border-t border-slate-100 bg-slate-50/90 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="w-full sm:flex-1">
+            <div className="w-full sm:flex-1 flex items-center gap-2">
               <input
-    type="text"
-    value={reviewerNote}
-    onChange={(e) => setReviewerNote(e.target.value)}
-    placeholder="Catatan telaah medis atau pertanyaan klarifikasi untuk faskes..."
-    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
+                type="text"
+                value={reviewerNote}
+                onChange={(e) => setReviewerNote(e.target.value)}
+                placeholder="Catatan telaah medis atau pertanyaan klarifikasi untuk faskes..."
+                className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
+              />
+              <button
+                type="button"
+                onClick={handleDraftNoteWithAi}
+                disabled={isDraftingNote}
+                title="Susun otomatis kalimat catatan verifikator menggunakan AI"
+                className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#0E947A] border border-emerald-200 text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors cursor-pointer"
+              >
+                <Sparkles className={`w-3.5 h-3.5 ${isDraftingNote ? "animate-spin" : ""}`} />
+                <span className="hidden md:inline">{isDraftingNote ? "Menyusun..." : "Susun Catatan AI"}</span>
+              </button>
             </div>
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">

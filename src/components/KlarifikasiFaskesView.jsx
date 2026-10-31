@@ -3,8 +3,11 @@ import {
   MessageSquare,
   Send,
   CheckCircle2,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  AlertTriangle
 } from "lucide-react";
+import { requestAiDraftNote } from "../utils/aiClient";
 const KlarifikasiFaskesView = ({
   claims,
   currentUser,
@@ -20,7 +23,24 @@ const KlarifikasiFaskesView = ({
   );
   const [responseAnswer, setResponseAnswer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDraftingAi, setIsDraftingAi] = useState(false);
+  const [aiDraftWarning, setAiDraftWarning] = useState(null);
   const activeClaim = claims.find((c) => c.id === activeClaimId);
+
+  const handleDraftWithAi = async () => {
+    if (!activeClaim) return;
+    setIsDraftingAi(true);
+    setAiDraftWarning(null);
+    const res = await requestAiDraftNote(activeClaim, "faskes");
+    setIsDraftingAi(false);
+    if (res.success && res.note) {
+      setResponseAnswer(res.note);
+    } else {
+      setAiDraftWarning(
+        res.error || "API Key AI belum dihubungkan di Konfigurasi AI (peran Admin)."
+      );
+    }
+  };
   const handleSubmitResponse = (e) => {
     e.preventDefault();
     if (!activeClaim || !responseAnswer.trim()) return;
@@ -165,12 +185,32 @@ const KlarifikasiFaskesView = ({
   }
               <form onSubmit={handleSubmitResponse} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Tanggapan / Penjelasan Medis Faskes:
-                  </label>
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                    <label className="block text-xs font-bold text-slate-700">
+                      Tanggapan / Penjelasan Medis Faskes:
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleDraftWithAi}
+                      disabled={isDraftingAi}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[#0E947A] border border-emerald-200 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isDraftingAi ? "animate-spin" : ""}`} />
+                      <span>{isDraftingAi ? "Menyusun dengan AI..." : "Susun Jawaban Klinis dengan AI"}</span>
+                    </button>
+                  </div>
                   <p className="text-[11px] text-slate-500 mb-2">
                     Berikan penjelasan tertulis. Tanggapan ini akan dicatat dan diterbitkan sebagai <strong>Versi {activeClaim.currentVersion + 1}</strong> bersegel baru tanpa menimpa versi sebelumnya.
                   </p>
+                  {aiDraftWarning && (
+                    <div className="mb-2.5 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold block">AI Tidak Terpanggil:</span>
+                        <span>{aiDraftWarning}</span>
+                      </div>
+                    </div>
+                  )}
                   <textarea
     rows={4}
     value={responseAnswer}

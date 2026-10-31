@@ -527,7 +527,7 @@ const DashboardAdminView = ({
                       <div className="text-[11px] text-slate-500 mt-1.5 flex items-start gap-1.5 leading-snug">
                         <Sparkles className="w-3.5 h-3.5 text-[#0E947A] shrink-0 mt-0.5" />
                         <span className="line-clamp-2">
-                          <strong className="text-slate-700">Alasan AI:</strong>{" "}
+                          <strong className="text-slate-700">Ringkasan Rule Engine:</strong>{" "}
                           {aiReason.shortReason}
                         </span>
                       </div>
