@@ -415,7 +415,7 @@ const LabVaultView = ({
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     transition={{ duration: 0.22, ease: "easeOut" }}
-    className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex justify-center items-start p-4 py-8 sm:py-14"
+    className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex justify-center items-center p-3 sm:p-5"
     onClick={(e) => {
       if (e.target === e.currentTarget) setIsSimulatorOpen(false);
     }}

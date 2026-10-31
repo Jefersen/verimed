@@ -450,7 +450,7 @@ const NewClaimModal = ({
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
     transition={{ duration: 0.22, ease: "easeOut" }}
-    className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex justify-center items-start p-3 sm:p-5 py-6 sm:py-10"
+    className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-4 overflow-hidden"
     onClick={(e) => {
       if (e.target === e.currentTarget) onClose();
     }}
@@ -466,12 +466,12 @@ const NewClaimModal = ({
       opacity: { duration: 0.2 },
       scale: { duration: 0.2 }
     }}
-    className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[88vh]"
+    className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[92vh] my-auto"
   >
         {
     /* Header */
   }
-        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+        <div className="p-4 sm:p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center">
               <ShieldCheck className="w-5 h-5" />
@@ -487,7 +487,7 @@ const NewClaimModal = ({
           </div>
           <button
     onClick={onClose}
-    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg cursor-pointer"
   >
             <X className="w-5 h-5" />
           </button>
@@ -497,7 +497,7 @@ const NewClaimModal = ({
     /* Form Body */
   }
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          <div className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
+          <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
