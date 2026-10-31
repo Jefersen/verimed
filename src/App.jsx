@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   INITIAL_USERS,
   INITIAL_CLAIMS,
@@ -30,12 +30,20 @@ import { DemoTutorialOverlay } from "./components/DemoTutorialOverlay";
 import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle2, AlertTriangle, ShieldAlert } from "lucide-react";
 function App() {
-  const [currentUser, setCurrentUser] = useState(INITIAL_USERS[0]);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const sess = sessionStorage.getItem("verimed_active_user");
+      if (sess) return JSON.parse(sess);
+      const loc = localStorage.getItem("verimed_active_user");
+      if (loc) return JSON.parse(loc);
+    } catch {}
+    return INITIAL_USERS[0];
+  });
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [claims, setClaims] = useState(INITIAL_CLAIMS);
-  const [seals, setSeals] = useState(INITIAL_SEALS);
-  const [labResults, setLabResults] = useState(INITIAL_LAB_RESULTS);
-  const [auditLogs, setAuditLogs] = useState(INITIAL_AUDIT_LOGS);
+  const [claims, setClaims] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_CLAIMS);
+  const [seals, setSeals] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_SEALS);
+  const [labResults, setLabResults] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_LAB_RESULTS);
+  const [auditLogs, setAuditLogs] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_AUDIT_LOGS);
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [isNewClaimModalOpen, setIsNewClaimModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -48,12 +56,83 @@ function App() {
       setToastMessage(null);
     }, 3500);
   };
+
+  // Sync real tenant data across browser tabs and backend database
+  useEffect(() => {
+    if (!currentUser) return;
+
+    if (currentUser.isDemo) {
+      setClaims(INITIAL_CLAIMS);
+      setLabResults(INITIAL_LAB_RESULTS);
+      setSeals(INITIAL_SEALS);
+      setAuditLogs(INITIAL_AUDIT_LOGS);
+      return;
+    }
+
+    const pairing = currentUser.pairingCode || "BPJS-KC-JKT01";
+    let isMounted = true;
+
+    const fetchSyncData = async () => {
+      try {
+        const res = await fetch(`/api/sync?pairingCode=${encodeURIComponent(pairing)}&isDemo=false`);
+        const data = await res.json().catch(() => ({}));
+        if (data.success && isMounted) {
+          setClaims(data.claims || []);
+          setLabResults(data.labResults || []);
+          setSeals(data.seals || []);
+          setAuditLogs(data.auditLogs || []);
+        }
+      } catch (err) {
+        console.warn("[VeriMed Sync] Warning:", err);
+      }
+    };
+
+    fetchSyncData();
+
+    let channel = null;
+    try {
+      channel = new BroadcastChannel("verimed_sync");
+      channel.onmessage = (event) => {
+        if (event.data?.type === "REFRESH" && event.data?.pairingCode === pairing) {
+          fetchSyncData();
+        }
+      };
+    } catch {}
+
+    const interval = setInterval(fetchSyncData, 2500);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      if (channel) channel.close();
+    };
+  }, [currentUser?.id, currentUser?.isDemo, currentUser?.pairingCode]);
+
   const handleSwitchRole = () => {
     if (!currentUser) return;
-    const nextUser = currentUser.role === "admin" ? INITIAL_USERS[1] : INITIAL_USERS[0];
-    setCurrentUser(nextUser);
-    setActiveTab("dashboard");
-    showToast(`Beralih peran ke: ${nextUser.name} (${nextUser.role === "admin" ? "Admin & Verifikator" : "Faskes"})`);
+    if (currentUser.isDemo) {
+      const nextUser = currentUser.role === "admin" ? INITIAL_USERS[1] : INITIAL_USERS[0];
+      setCurrentUser(nextUser);
+      try {
+        sessionStorage.setItem("verimed_active_user", JSON.stringify(nextUser));
+      } catch {}
+      setActiveTab("dashboard");
+      showToast(`Beralih peran ke: ${nextUser.name} (${nextUser.role === "admin" ? "Admin & Verifikator" : "Faskes"})`);
+    } else {
+      const nextRole = currentUser.role === "admin" ? "faskes" : "admin";
+      const switched = {
+        ...currentUser,
+        role: nextRole,
+        facilityId: nextRole === "faskes" ? (currentUser.facilityId || "FK-001") : undefined,
+        facilityName: nextRole === "faskes" ? (currentUser.facilityName || "RS Mitra Mandiri") : "Kantor BPJS Cabang"
+      };
+      setCurrentUser(switched);
+      try {
+        sessionStorage.setItem("verimed_active_user", JSON.stringify(switched));
+      } catch {}
+      setActiveTab("dashboard");
+      showToast(`Beralih simulasi peran ke: ${switched.name} (${nextRole === "admin" ? "Admin & Verifikator" : "Faskes"})`);
+    }
   };
   const handleUpdateClaimStatus = (claimId, newStatus, note) => {
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
@@ -112,6 +191,28 @@ function App() {
     };
     setAuditLogs((prev) => [newLog, ...prev]);
     showToast(`Keputusan verifikasi disimpan: ${newStatus.replace("_", " ")}.`);
+
+    if (!currentUser?.isDemo) {
+      fetch(`/api/claims/${claimId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: newStatus,
+          note,
+          actor: currentUser?.name || "Admin Verifikator",
+          role: currentUser?.role || "admin",
+          pairingCode: currentUser?.pairingCode
+        })
+      })
+        .then(() => {
+          try {
+            const ch = new BroadcastChannel("verimed_sync");
+            ch.postMessage({ type: "REFRESH", pairingCode: currentUser?.pairingCode });
+            ch.close();
+          } catch {}
+        })
+        .catch((e) => console.error("Sync status error:", e));
+    }
   };
   const handleToggleTamper = (claimId, shouldTamper, reason) => {
     const applyTamperTransform = (c) => {
@@ -182,6 +283,27 @@ function App() {
       shouldTamper ? "Simulasi Tamper Aktif: Segel terdeteksi TIDAK COCOK, aturan R-SEAL terpicu!" : "Salinan dipulihkan ke segel asli vault. Integritas kembali normal.",
       shouldTamper ? "error" : "success"
     );
+
+    if (!currentUser?.isDemo) {
+      fetch(`/api/claims/${claimId}/tamper`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          shouldTamper,
+          reason,
+          pairingCode: currentUser?.pairingCode,
+          actor: currentUser?.name || "Admin"
+        })
+      })
+        .then(() => {
+          try {
+            const ch = new BroadcastChannel("verimed_sync");
+            ch.postMessage({ type: "REFRESH", pairingCode: currentUser?.pairingCode });
+            ch.close();
+          } catch {}
+        })
+        .catch((e) => console.error("Sync tamper error:", e));
+    }
   };
   const handleAddNewClaim = (newClaim) => {
     setClaims((prev) => [newClaim, ...prev]);
@@ -198,6 +320,22 @@ function App() {
     setAuditLogs((prev) => [newLog, ...prev]);
     setIsNewClaimModalOpen(false);
     showToast(`Klaim #${newClaim.claimNumber} berhasil disegel dan ditambahkan ke rantai blok.`);
+
+    if (!currentUser?.isDemo) {
+      fetch("/api/claims", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ claim: newClaim, pairingCode: currentUser?.pairingCode })
+      })
+        .then(() => {
+          try {
+            const ch = new BroadcastChannel("verimed_sync");
+            ch.postMessage({ type: "REFRESH", pairingCode: currentUser?.pairingCode });
+            ch.close();
+          } catch {}
+        })
+        .catch((e) => console.error("Sync claim error:", e));
+    }
   };
   const handleAddLabResult = (newLab) => {
     setLabResults((prev) => [newLab, ...prev]);
@@ -212,6 +350,22 @@ function App() {
     };
     setAuditLogs((prev) => [newLog, ...prev]);
     showToast(`Hasil lab ${newLab.test} (${newLab.id}) tersegel di Vault.`);
+
+    if (!currentUser?.isDemo) {
+      fetch("/api/lab-results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ labResult: newLab, pairingCode: currentUser?.pairingCode })
+      })
+        .then(() => {
+          try {
+            const ch = new BroadcastChannel("verimed_sync");
+            ch.postMessage({ type: "REFRESH", pairingCode: currentUser?.pairingCode });
+            ch.close();
+          } catch {}
+        })
+        .catch((e) => console.error("Sync lab error:", e));
+    }
   };
   const handleSubmitRevision = (claimId, revisionNote, updatedDiagnosis, additionalNotes) => {
     const targetClaim = claims.find((c) => c.id === claimId);
@@ -293,12 +447,37 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     };
     setAuditLogs((prev) => [newLog, ...prev]);
     showToast(`Revisi Klaim #${targetClaim.claimNumber} (Versi ${nextVersion}) berhasil diajukan dan disegel kembali.`);
+
+    if (!currentUser?.isDemo) {
+      fetch(`/api/claims/${claimId}/revision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          updatedClaim: finalizedClaim,
+          newSeal,
+          pairingCode: currentUser?.pairingCode,
+          actor: currentUser?.name || "Faskes",
+          revisionNote
+        })
+      })
+        .then(() => {
+          try {
+            const ch = new BroadcastChannel("verimed_sync");
+            ch.postMessage({ type: "REFRESH", pairingCode: currentUser?.pairingCode });
+            ch.close();
+          } catch {}
+        })
+        .catch((e) => console.error("Sync revision error:", e));
+    }
   };
   if (!currentUser) {
     return <AuthView
       demoUsers={INITIAL_USERS}
       onLoginSuccess={(user) => {
         setCurrentUser(user);
+        try {
+          sessionStorage.setItem("verimed_active_user", JSON.stringify(user));
+        } catch {}
         setActiveTab("dashboard");
         showToast(`Berhasil masuk sebagai ${user.name}`);
       }}
@@ -344,6 +523,10 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     }}
     onLogout={() => {
       setCurrentUser(null);
+      try {
+        sessionStorage.removeItem("verimed_active_user");
+        localStorage.removeItem("verimed_active_user");
+      } catch {}
       showToast("Anda telah keluar.");
     }}
     onSwitchRole={handleSwitchRole}

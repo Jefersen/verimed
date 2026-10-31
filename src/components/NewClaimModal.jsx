@@ -345,6 +345,7 @@ const NewClaimModal = ({
     const partialClaim = {
       id: claimId,
       claimNumber,
+      pairingCode: currentUser.pairingCode || "BPJS-KC-JKT01",
       facilityId: currentUser.facilityId || "FASKES-01",
       facilityName: currentUser.facilityName || "RS Siloam Sejahtera",
       encounterId,

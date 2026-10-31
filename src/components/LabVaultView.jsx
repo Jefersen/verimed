@@ -288,6 +288,7 @@ const LabVaultView = ({
     const payloadHash = sha256Sync(payload);
     const newLab = {
       id: labId,
+      pairingCode: currentUser.pairingCode || "BPJS-KC-JKT01",
       facilityId: currentUser.facilityId || "FASKES-01",
       sourceId: "LIS-AUTO-01",
       sourceName,
@@ -724,7 +725,20 @@ const LabVaultView = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayLabs.map((lab) => <tr key={lab.id} className="hover:bg-slate-50/70 transition-colors">
+              {displayLabs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                    <FlaskConical className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm font-semibold text-slate-600">Belum ada hasil uji lab atau citra diagnostik tersegel</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      {isAdmin
+                        ? `Hasil pemeriksaan dari faskes mitra dengan kode pairing "${currentUser.pairingCode || 'BPJS-KC-JKT01'}" akan masuk ke Vault secara real-time.`
+                        : "Gunakan LIS Simulator di atas untuk mengirim dan menyegel hasil lab/citra diagnostik baru."}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                displayLabs.map((lab) => <tr key={lab.id} className="hover:bg-slate-50/70 transition-colors">
                   <td className="py-3.5 px-4 font-mono">
                     <span className="font-bold text-slate-900 block">{lab.id}</span>
                     <span className="text-[11px] text-slate-400">{lab.specimenId}</span>
@@ -784,7 +798,7 @@ const LabVaultView = ({
                       {copiedId === lab.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
                     </button>
                   </td>
-                </tr>)}
+                </tr>))}
             </tbody>
           </table>
         </div>

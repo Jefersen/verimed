@@ -279,6 +279,13 @@ function verifySealLeaves(originalSeal, candidateLeaves) {
   };
 }
 function verifyChainIntegrity(seals) {
+  if (!seals || seals.length === 0) {
+    return {
+      isChainIntact: true,
+      message: "Rantai audit belum memiliki blok segel transaksi (kosong).",
+      totalBlocks: 0
+    };
+  }
   for (let i = 0; i < seals.length; i++) {
     const current = seals[i];
     const prev = i > 0 ? seals[i - 1] : null;

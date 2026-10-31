@@ -243,13 +243,26 @@ const HeaderBar = ({
                 </motion.button>
               </div>
             ) : (
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D6F2EE]/60 text-[#0E947A] text-[11px] font-bold font-mono">
-                <span className="w-2 h-2 rounded-full bg-[#0E947A]" />
-                <span>
-                  {isAdmin
-                    ? `Kode Wilayah: ${currentUser.pairingCode || "BPJS-KC-JKT01"}`
-                    : `Terhubung: ${currentUser.pairingCode || "BPJS-KC-JKT01"}`}
-                </span>
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D6F2EE]/60 text-[#0E947A] text-[11px] font-bold font-mono">
+                  <span className="w-2 h-2 rounded-full bg-[#0E947A]" />
+                  <span>
+                    {isAdmin
+                      ? `Wilayah: ${currentUser.pairingCode || "BPJS-KC-JKT01"}`
+                      : `Pairing: ${currentUser.pairingCode || "BPJS-KC-JKT01"}`}
+                  </span>
+                </div>
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={onSwitchRole}
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D6F2EE]/70 hover:bg-[#D6F2EE] text-[#0E947A] text-[11px] font-bold transition-colors cursor-pointer group outline-none border-none"
+                  title="Beralih Peran Simulasi Cepat"
+                >
+                  <ArrowRightLeft className="w-3 h-3 text-[#0E947A] group-hover:rotate-180 transition-transform duration-500" />
+                  <span>{isAdmin ? "Admin" : "Faskes"}</span>
+                </motion.button>
               </div>
             )}
 

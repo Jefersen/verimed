@@ -138,8 +138,17 @@ const AuditChainView = ({ seals, auditLogs }) => {
               </div>
 
               <div className="p-5 space-y-4">
-                <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-emerald-200">
-                  {seals.map((seal, index) => <motion.div
+                {seals.length === 0 ? (
+                  <div className="p-10 text-center text-slate-400">
+                    <LinkIcon className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                    <p className="text-sm font-semibold text-slate-600">Belum ada blok transaksi tersegel</p>
+                    <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                      Klaim yang diajukan oleh faskes mitra akan membentuk rantai blok kriptografis append-only di sini.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative pl-6 sm:pl-8 space-y-6 before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-emerald-200">
+                    {seals.map((seal, index) => <motion.div
     key={seal.id}
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
@@ -208,7 +217,8 @@ const AuditChainView = ({ seals, auditLogs }) => {
                         </div>
                       </div>
                     </motion.div>)}
-                </div>
+                  </div>
+                )}
               </div>
             </div>}
 
@@ -240,7 +250,16 @@ const AuditChainView = ({ seals, auditLogs }) => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {auditLogs.map((log) => <tr key={log.id} className="hover:bg-slate-50/60">
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-10 text-center text-slate-400">
+                          <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                          <p className="text-sm font-semibold text-slate-600">Belum ada catatan aktivitas audit</p>
+                          <p className="text-xs text-slate-400 mt-1">Aktivitas verifikasi, pengajuan klaim, dan LIS ingestion akan dicatat di sini.</p>
+                        </td>
+                      </tr>
+                    ) : (
+                      auditLogs.map((log) => <tr key={log.id} className="hover:bg-slate-50/60">
                         <td className="py-3 px-4 font-mono text-[11px] text-slate-500 whitespace-nowrap">
                           {new Date(log.timestamp).toLocaleTimeString("id-ID")} WIB
                         </td>
@@ -259,7 +278,8 @@ const AuditChainView = ({ seals, auditLogs }) => {
                           {log.ref}
                         </td>
                         <td className="py-3 px-4 text-slate-600 max-w-md">{log.details}</td>
-                      </tr>)}
+                      </tr>)
+                    )}
                   </tbody>
                 </table>
               </div>

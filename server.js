@@ -23,7 +23,8 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // In-memory rate limiter for sensitive AI & Auth endpoints
 const rateLimitMap = new Map();
@@ -442,6 +443,410 @@ function verifyAuthToken(token) {
     return null;
   }
 }
+
+// Persistent Store for Real User Accounts, Tenants & Cryptographic Records
+const DB_PATH = path.resolve(__dirname, "data", "db.json");
+
+function initDb() {
+  const dir = path.dirname(DB_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  if (!fs.existsSync(DB_PATH)) {
+    const initialDb = {
+      users: [],
+      tenants: {}
+    };
+    fs.writeFileSync(DB_PATH, JSON.stringify(initialDb, null, 2), "utf8");
+  }
+}
+
+function readDb() {
+  initDb();
+  try {
+    const raw = fs.readFileSync(DB_PATH, "utf8");
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error("[DB Read Error]:", err);
+    return { users: [], tenants: {} };
+  }
+}
+
+function writeDb(data) {
+  try {
+    initDb();
+    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), "utf8");
+  } catch (err) {
+    console.error("[DB Write Error]:", err);
+  }
+}
+
+function getTenant(db, pairingCode) {
+  const code = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  if (!db.tenants) db.tenants = {};
+  if (!db.tenants[code]) {
+    db.tenants[code] = {
+      claims: [],
+      labResults: [],
+      seals: [],
+      auditLogs: []
+    };
+  }
+  return { code, tenant: db.tenants[code] };
+}
+
+// Register real user endpoint
+app.post("/api/auth/register", (req, res) => {
+  const { email, password, name, role = "admin", facilityName, pairingCode = "BPJS-KC-JKT01" } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ success: false, error: "Email dan kata sandi wajib diisi." });
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const db = readDb();
+  if (!Array.isArray(db.users)) db.users = [];
+
+  const existing = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+  if (existing) {
+    return res.status(400).json({ success: false, error: "Email ini sudah terdaftar. Silakan login." });
+  }
+
+  const salt = crypto.randomBytes(16).toString("hex");
+  const hash = crypto.scryptSync(password, salt, 32).toString("hex");
+
+  const userId = `USR-${Date.now()}`;
+  const facilityId = role === "faskes" ? `FK-${Date.now().toString().slice(-4)}` : undefined;
+  const user = {
+    id: userId,
+    email: cleanEmail,
+    passwordHash: `${salt}:${hash}`,
+    name: name || cleanEmail.split("@")[0],
+    role,
+    isDemo: false,
+    pairingCode: cleanCode,
+    facilityId,
+    facilityName: role === "faskes" ? (facilityName || "Faskes Mandiri") : "Kantor BPJS Cabang",
+    createdAt: new Date().toISOString()
+  };
+
+  db.users.push(user);
+  getTenant(db, cleanCode);
+  writeDb(db);
+
+  const token = generateAuthToken({ role, email: cleanEmail, userId, pairingCode: cleanCode });
+  const { passwordHash: _, ...safeUser } = user;
+  return res.json({ success: true, user: safeUser, token });
+});
+
+// Login real user endpoint
+app.post("/api/auth/login", (req, res) => {
+  const { email, password, role, pairingCode } = req.body || {};
+  if (!email || !password) {
+    return res.status(400).json({ success: false, error: "Email dan kata sandi wajib diisi." });
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  const db = readDb();
+  if (!Array.isArray(db.users)) db.users = [];
+  const found = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
+
+  if (!found) {
+    const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+    const cleanRole = role || (cleanEmail.includes("admin") || cleanEmail.includes("bpjs") ? "admin" : "faskes");
+    const userId = `USR-${Date.now()}`;
+    const facilityId = cleanRole === "faskes" ? `FK-${Date.now().toString().slice(-4)}` : undefined;
+    const salt = crypto.randomBytes(16).toString("hex");
+    const hash = crypto.scryptSync(password, salt, 32).toString("hex");
+
+    const newUser = {
+      id: userId,
+      email: cleanEmail,
+      passwordHash: `${salt}:${hash}`,
+      name: cleanEmail.split("@")[0],
+      role: cleanRole,
+      isDemo: false,
+      pairingCode: cleanCode,
+      facilityId,
+      facilityName: cleanRole === "faskes" ? "Faskes Mandiri" : "Kantor BPJS Cabang",
+      createdAt: new Date().toISOString()
+    };
+    db.users.push(newUser);
+    getTenant(db, cleanCode);
+    writeDb(db);
+
+    const token = generateAuthToken({ role: cleanRole, email: cleanEmail, userId, pairingCode: cleanCode });
+    const { passwordHash: _, ...safeUser } = newUser;
+    return res.json({ success: true, user: safeUser, token });
+  }
+
+  const [salt, storedHash] = (found.passwordHash || "").split(":");
+  if (salt && storedHash) {
+    const calcHash = crypto.scryptSync(password, salt, 32).toString("hex");
+    if (calcHash !== storedHash) {
+      return res.status(401).json({ success: false, error: "Kata sandi salah. Silakan coba kembali." });
+    }
+  }
+
+  if (pairingCode && pairingCode.trim()) {
+    found.pairingCode = pairingCode.trim().toUpperCase();
+    getTenant(db, found.pairingCode);
+    writeDb(db);
+  }
+
+  const token = generateAuthToken({ role: found.role, email: found.email, userId: found.id, pairingCode: found.pairingCode });
+  const { passwordHash: _, ...safeUser } = found;
+  return res.json({ success: true, user: safeUser, token });
+});
+
+// Synchronize claims, lab results, seals, and audit logs for a pairing code
+app.get("/api/sync", (req, res) => {
+  const { pairingCode = "BPJS-KC-JKT01", isDemo } = req.query;
+  const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+
+  if (isDemo === "true") {
+    return res.json({
+      success: true,
+      isDemo: true,
+      pairingCode: cleanCode,
+      claims: [],
+      labResults: [],
+      seals: [],
+      auditLogs: []
+    });
+  }
+
+  const db = readDb();
+  const { tenant } = getTenant(db, cleanCode);
+  return res.json({
+    success: true,
+    isDemo: false,
+    pairingCode: cleanCode,
+    claims: tenant.claims || [],
+    labResults: tenant.labResults || [],
+    seals: tenant.seals || [],
+    auditLogs: tenant.auditLogs || []
+  });
+});
+
+// Create/Ingest Lab Result (LIS Level 2)
+app.post("/api/lab-results", (req, res) => {
+  const { labResult, pairingCode = "BPJS-KC-JKT01" } = req.body || {};
+  if (!labResult || !labResult.id) {
+    return res.status(400).json({ success: false, error: "Data hasil lab tidak valid." });
+  }
+  const cleanCode = (pairingCode || labResult.pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const db = readDb();
+  const { tenant } = getTenant(db, cleanCode);
+
+  tenant.labResults = tenant.labResults || [];
+  const existingIdx = tenant.labResults.findIndex((l) => l.id === labResult.id);
+  const enrichedLab = { ...labResult, pairingCode: cleanCode };
+  if (existingIdx >= 0) {
+    tenant.labResults[existingIdx] = enrichedLab;
+  } else {
+    tenant.labResults.unshift(enrichedLab);
+  }
+
+  const nowIso = new Date().toISOString();
+  tenant.auditLogs = tenant.auditLogs || [];
+  tenant.auditLogs.unshift({
+    id: `LOG-${Date.now().toString().slice(-4)}`,
+    actor: labResult.sourceName || "LIS Simulator",
+    role: "faskes",
+    action: "INGESTION_LAB_LIS",
+    ref: labResult.id,
+    details: `Pemeriksaan ${labResult.test} (${labResult.value} ${labResult.unit}) diterima dan disegel Level 2 (Pairing: ${cleanCode}).`,
+    timestamp: nowIso
+  });
+
+  writeDb(db);
+  return res.json({ success: true, labResult: enrichedLab });
+});
+
+// Create Claim
+app.post("/api/claims", (req, res) => {
+  const { claim, pairingCode = "BPJS-KC-JKT01" } = req.body || {};
+  if (!claim || !claim.id) {
+    return res.status(400).json({ success: false, error: "Data klaim tidak valid." });
+  }
+  const cleanCode = (pairingCode || claim.pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const db = readDb();
+  const { tenant } = getTenant(db, cleanCode);
+
+  tenant.claims = tenant.claims || [];
+  const enrichedClaim = { ...claim, pairingCode: cleanCode };
+  const existingIdx = tenant.claims.findIndex((c) => c.id === claim.id);
+  if (existingIdx >= 0) {
+    tenant.claims[existingIdx] = enrichedClaim;
+  } else {
+    tenant.claims.unshift(enrichedClaim);
+  }
+
+  if (claim.seal) {
+    tenant.seals = tenant.seals || [];
+    const sealExists = tenant.seals.some((s) => s.id === claim.seal.id);
+    if (!sealExists) {
+      tenant.seals.push(claim.seal);
+    }
+  }
+
+  tenant.auditLogs = tenant.auditLogs || [];
+  tenant.auditLogs.unshift({
+    id: `LOG-${Date.now().toString().slice(-4)}`,
+    actor: claim.facilityName || "Faskes",
+    role: "faskes",
+    action: "PENGAJUAN_KLAIM",
+    ref: claim.claimNumber || claim.id,
+    details: `Pengajuan klaim baru ${claim.primaryDiagnosis?.name || ""} (${claim.inacbgCode || ""}) tersegel Ed25519 (Pairing: ${cleanCode}).`,
+    timestamp: new Date().toISOString()
+  });
+
+  writeDb(db);
+  return res.json({ success: true, claim: enrichedClaim });
+});
+
+// Update Claim Status (Disetujui, Klarifikasi, Ditelaah)
+app.patch("/api/claims/:id/status", (req, res) => {
+  const { id } = req.params;
+  const { status, note, actor = "Admin Verifikator", role = "admin", pairingCode = "BPJS-KC-JKT01" } = req.body || {};
+  const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const db = readDb();
+  const { tenant } = getTenant(db, cleanCode);
+
+  const claim = (tenant.claims || []).find((c) => c.id === id);
+  if (!claim) {
+    return res.status(404).json({ success: false, error: "Klaim tidak ditemukan pada tenant ini." });
+  }
+
+  const nowIso = new Date().toISOString();
+  claim.status = status;
+  claim.updatedAt = nowIso;
+  claim.clarificationHistory = claim.clarificationHistory || [];
+
+  if (status === "klarifikasi" && note) {
+    claim.clarificationHistory.push({
+      id: `msg-${Date.now()}`,
+      senderRole: role,
+      senderName: actor,
+      message: note,
+      timestamp: nowIso
+    });
+  }
+
+  tenant.auditLogs = tenant.auditLogs || [];
+  tenant.auditLogs.unshift({
+    id: `LOG-${Date.now().toString().slice(-4)}`,
+    actor,
+    role,
+    action: `KEPUTUSAN_${String(status).toUpperCase()}`,
+    ref: claim.claimNumber || id,
+    details: note || `Keputusan status klaim diubah menjadi ${status}.`,
+    timestamp: nowIso
+  });
+
+  writeDb(db);
+  return res.json({ success: true, claim });
+});
+
+// Toggle Tamper Simulation on a Claim
+app.patch("/api/claims/:id/tamper", (req, res) => {
+  const { id } = req.params;
+  const { shouldTamper, reason, pairingCode = "BPJS-KC-JKT01", actor = "Admin" } = req.body || {};
+  const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const db = readDb();
+  const { tenant } = getTenant(db, cleanCode);
+
+  const claim = (tenant.claims || []).find((c) => c.id === id);
+  if (!claim) {
+    return res.status(404).json({ success: false, error: "Klaim tidak ditemukan." });
+  }
+
+  const orig = claim._originalUntampered || {
+    billedAmount: claim.billedAmount,
+    items: claim.items,
+    resumeText: claim.resumeText
+  };
+  let nextBilled = orig.billedAmount;
+  let nextItems = orig.items;
+  let nextResume = orig.resumeText;
+
+  if (shouldTamper) {
+    const isResumeTamper = reason && reason.toLowerCase().includes("resume");
+    if (isResumeTamper) {
+      nextResume = `${orig.resumeText} [Teks resume klinis dimodifikasi sepihak pasca-segel]`;
+    } else if (claim._tamperedData) {
+      nextBilled = claim._tamperedData.billedAmount;
+      nextItems = claim._tamperedData.items;
+      nextResume = claim._tamperedData.resumeText || orig.resumeText;
+    } else {
+      nextBilled = orig.billedAmount + 5000000;
+      nextItems = [
+        ...(orig.items || []),
+        {
+          code: "TAMPER-VIP",
+          description: "Tambahan Manipulasi Tagihan Sepihak Pasca-Segel",
+          amount: 5000000
+        }
+      ];
+    }
+  }
+
+  claim._originalUntampered = orig;
+  claim.billedAmount = nextBilled;
+  claim.items = nextItems;
+  claim.resumeText = nextResume;
+  claim.isTampered = !!shouldTamper;
+  claim.tamperReason = shouldTamper ? (reason || "Salinan berkas faskes dimodifikasi sepihak") : undefined;
+
+  tenant.auditLogs = tenant.auditLogs || [];
+  tenant.auditLogs.unshift({
+    id: `LOG-${Date.now().toString().slice(-4)}`,
+    actor,
+    role: "admin",
+    action: shouldTamper ? "SIMULASI_TAMPER_AKTIF" : "RESET_TAMPER_VAULT",
+    ref: id,
+    details: shouldTamper ? `Uji coba simulasi tamper diaktifkan: ${reason}` : "Salinan faskes dipulihkan kembali sesuai segel asli vault.",
+    timestamp: new Date().toISOString()
+  });
+
+  writeDb(db);
+  return res.json({ success: true, claim });
+});
+
+// Submit Claim Revision (Faskes responding to clarification)
+app.post("/api/claims/:id/revision", (req, res) => {
+  const { id } = req.params;
+  const { updatedClaim, newSeal, pairingCode = "BPJS-KC-JKT01", actor = "Faskes", revisionNote } = req.body || {};
+  const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const db = readDb();
+  const { tenant } = getTenant(db, cleanCode);
+
+  tenant.claims = tenant.claims || [];
+  const idx = tenant.claims.findIndex((c) => c.id === id);
+  if (idx < 0) {
+    return res.status(404).json({ success: false, error: "Klaim tidak ditemukan." });
+  }
+
+  tenant.claims[idx] = updatedClaim;
+  if (newSeal) {
+    tenant.seals = tenant.seals || [];
+    tenant.seals.push(newSeal);
+  }
+
+  const nowIso = new Date().toISOString();
+  tenant.auditLogs = tenant.auditLogs || [];
+  tenant.auditLogs.unshift({
+    id: `LOG-${Date.now().toString().slice(-4)}`,
+    actor,
+    role: "faskes",
+    action: "REVISI_KLAIM_VERSI_BARU",
+    ref: updatedClaim.claimNumber || id,
+    details: `Versi ${updatedClaim.currentVersion} diajukan sebagai respon klarifikasi: "${String(revisionNote || '').slice(0, 80)}...". Segel baru terbentuk.`,
+    timestamp: nowIso
+  });
+
+  writeDb(db);
+  return res.json({ success: true, claim: updatedClaim });
+});
 
 app.post("/api/auth/token", (req, res) => {
   const { role = "admin", email = "admin@verimed.id", userId = "USR-ADMIN-01" } = req.body || {};

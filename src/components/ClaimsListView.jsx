@@ -302,9 +302,15 @@ const ClaimsListView = ({
     className="p-12 text-center"
   >
               <FileText className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-700">Tidak ada klaim yang cocok</p>
-              <p className="text-xs text-slate-500 mt-1">
-                Coba sesuaikan kata kunci pencarian atau bersihkan filter yang aktif.
+              <p className="text-sm font-semibold text-slate-700">
+                {claims.length === 0 ? "Belum ada berkas klaim" : "Tidak ada klaim yang cocok"}
+              </p>
+              <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                {claims.length === 0
+                  ? (isAdmin
+                      ? `Klaim yang diajukan oleh Faskes mitra (${currentUser.pairingCode || "BPJS-KC-JKT01"}) akan muncul di sini secara otomatis.`
+                      : "Gunakan tombol 'Buat Klaim Baru' untuk mengajukan klaim INA-CBG pertama Anda.")
+                  : "Coba sesuaikan kata kunci pencarian atau bersihkan filter yang aktif."}
               </p>
             </motion.div> : <motion.div
     key={(isAdmin ? adminSubTab : "faskes") + selectedStatus + selectedRiskBand + selectedAnomalyType}

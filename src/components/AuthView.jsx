@@ -20,7 +20,9 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
   const [pairingCode, setPairingCode] = useState("BPJS-KC-JKT01");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const handleCustomSubmit = (e) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCustomSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
     if (!email || !password) {
@@ -35,27 +37,56 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
       setErrorMsg("Harap isi nama Rumah Sakit / Faskes.");
       return;
     }
-    if (selectedRole === "faskes" && !pairingCode.trim()) {
-      setErrorMsg("Harap masukkan Kode Kemitraan / Pairing Admin BPJS.");
-      return;
+    const cleanPairing = pairingCode.trim().toUpperCase() || "BPJS-KC-JKT01";
+
+    setIsSubmitting(true);
+    try {
+      const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
+      const payload = {
+        email: email.trim(),
+        password,
+        role: selectedRole,
+        name: name.trim(),
+        facilityName: facilityName.trim(),
+        pairingCode: cleanPairing
+      };
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        setErrorMsg(data.error || "Gagal memproses autentikasi ke server.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (data.token) {
+        sessionStorage.setItem("verimed_token", data.token);
+      }
+      onLoginSuccess(data.user);
+    } catch {
+      // Fallback offline in case server is unreachable
+      const fallbackUser = {
+        id: `USR-${Date.now()}`,
+        name: name || (email.split("@")[0] ?? "User"),
+        email: email.trim(),
+        role: selectedRole,
+        isDemo: false,
+        pairingCode: cleanPairing,
+        facilityId:
+          selectedRole === "faskes"
+            ? `FK-${Date.now().toString().slice(-4)}`
+            : void 0,
+        facilityName:
+          selectedRole === "faskes"
+            ? facilityName || "Faskes Mandiri"
+            : "Kantor BPJS Cabang"
+      };
+      onLoginSuccess(fallbackUser);
+    } finally {
+      setIsSubmitting(false);
     }
-    const newUser = {
-      id: `USR-${Date.now()}`,
-      name: name || (email.split("@")[0] ?? "User"),
-      email,
-      role: selectedRole,
-      isDemo: false,
-      pairingCode: pairingCode.trim().toUpperCase() || "BPJS-KC-JKT01",
-      facilityId:
-        selectedRole === "faskes"
-          ? `FK-${Date.now().toString().slice(-4)}`
-          : void 0,
-      facilityName:
-        selectedRole === "faskes"
-          ? facilityName || "Faskes Mandiri"
-          : "Kantor BPJS Cabang"
-    };
-    onLoginSuccess(newUser);
   };
 
   const handleQuickLogin = (role, index) => {
@@ -600,30 +631,30 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                 )}
               </AnimatePresence>
 
-              {/* Kode Kemitraan / Pairing Admin BPJS for Faskes */}
-              <AnimatePresence initial={false}>
-                {selectedRole === "faskes" && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={pairingCode}
-                        onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
-                        placeholder="Kode Kemitraan Admin BPJS (cth: BPJS-KC-JKT01)"
-                        className="w-full pl-4 pr-28 py-3.5 text-xs sm:text-sm font-mono font-bold rounded-2xl bg-[#F5F7F9] hover:bg-[#EDF1F5] focus:bg-white text-[#0E947A] placeholder:text-slate-400 placeholder:font-sans placeholder:font-medium border border-transparent focus:border-[#0E947A]/35 transition-all"
-                      />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-1 rounded-lg bg-[#D6F2EE] text-[#0E947A]">
-                        Kode Pairing
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Kode Kemitraan / Pairing Admin BPJS (Both Admin & Faskes) */}
+              <div className="space-y-1">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={pairingCode}
+                    onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
+                    placeholder={
+                      selectedRole === "admin"
+                        ? "Kode Cabang / Pairing (cth: BPJS-KC-JKT01)"
+                        : "Kode Kemitraan Admin BPJS (cth: BPJS-KC-JKT01)"
+                    }
+                    className="w-full pl-4 pr-32 py-3.5 text-xs sm:text-sm font-mono font-bold rounded-2xl bg-[#F5F7F9] hover:bg-[#EDF1F5] focus:bg-white text-[#0E947A] placeholder:text-slate-400 placeholder:font-sans placeholder:font-medium border border-transparent focus:border-[#0E947A]/35 transition-all"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold px-2 py-1 rounded-lg bg-[#D6F2EE] text-[#0E947A]">
+                    {selectedRole === "admin" ? "Kode Cabang" : "Kode Pairing"}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 px-1 font-medium">
+                  {selectedRole === "admin"
+                    ? "Kode pairing kantor cabang untuk sinkronisasi data klaim & lab dari faskes mitra."
+                    : "Samakan kode ini dengan kode kantor cabang verifikator BPJS mitra Anda."}
+                </p>
+              </div>
 
               {/* Email Input */}
               <div>
@@ -677,11 +708,14 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
               {/* Primary Green Login CTA Button */}
               <motion.button
                 type="submit"
-                whileHover={{ scale: 1.01, y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full py-3.5 px-6 rounded-2xl bg-[#0E947A] hover:bg-[#0B7A64] text-white font-bold text-sm shadow-lg shadow-[#0E947A]/25 transition-all cursor-pointer"
+                disabled={isSubmitting}
+                whileHover={{ scale: isSubmitting ? 1 : 1.01, y: isSubmitting ? 0 : -1 }}
+                whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
+                className={`w-full py-3.5 px-6 rounded-2xl bg-[#0E947A] hover:bg-[#0B7A64] text-white font-bold text-sm shadow-lg shadow-[#0E947A]/25 transition-all cursor-pointer ${
+                  isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                }`}
               >
-                {isRegister ? "Daftar & Masuk" : "Login"}
+                {isSubmitting ? "Memproses..." : isRegister ? "Daftar & Masuk" : "Login"}
               </motion.button>
             </form>
 

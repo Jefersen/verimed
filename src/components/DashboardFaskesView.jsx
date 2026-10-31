@@ -56,11 +56,13 @@ const DashboardFaskesView = ({
     const dayNum = idx + 1;
     const linkedClaim =
       myClaims.length > 0 ? myClaims[idx % myClaims.length] : null;
-    const requestCount = dailyRequestCounts[idx];
+    const requestCount = myClaims.length > 0 ? dailyRequestCounts[idx] : 0;
     const billedVal =
-      idx < myClaims.length
-        ? myClaims[idx].billedAmount * Math.max(1, Math.round(requestCount / 2))
-        : Math.round(16500000 * baseMultipliers[idx]);
+      myClaims.length > 0
+        ? idx < myClaims.length
+          ? myClaims[idx].billedAmount * Math.max(1, Math.round(requestCount / 2))
+          : Math.round(16500000 * baseMultipliers[idx])
+        : 0;
 
     return {
       day: dayNum,
@@ -432,7 +434,16 @@ const DashboardFaskesView = ({
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-            {recentClaims.map((claim, idx) => {
+            {recentClaims.length === 0 ? (
+              <div className="p-12 text-center text-slate-400">
+                <FileText className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                <p className="text-sm font-semibold text-slate-700">Belum ada klaim yang diajukan</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  Klik tombol "Buat Klaim Baru" di atas untuk mengajukan dan menyegel klaim pertama Anda.
+                </p>
+              </div>
+            ) : (
+              recentClaims.map((claim, idx) => {
               // Exactly 1 single primary indicator badge per record
               const singleStatusBadge = claim.status === "disetujui"
                 ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
@@ -501,7 +512,7 @@ const DashboardFaskesView = ({
                   </div>
                 </motion.div>
               );
-            })}
+            }))}
           </div>
         </div>
 

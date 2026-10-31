@@ -67,12 +67,14 @@ const DashboardAdminView = ({
 
   const chartData = Array.from({ length: 14 }, (_, idx) => {
     const dayNum = idx + 1;
-    const linkedClaim = claims[idx % claims.length];
-    const requestCount = dailyRequestCounts[idx];
+    const linkedClaim = claims.length > 0 ? claims[idx % claims.length] : null;
+    const requestCount = claims.length > 0 ? dailyRequestCounts[idx] : 0;
     const billedVal =
-      idx < claims.length
-        ? claims[idx].billedAmount * Math.max(1, Math.round(requestCount / 2))
-        : Math.round(24500000 * baseMultipliers[idx]);
+      claims.length > 0
+        ? idx < claims.length
+          ? claims[idx].billedAmount * Math.max(1, Math.round(requestCount / 2))
+          : Math.round(24500000 * baseMultipliers[idx])
+        : 0;
 
     return {
       day: dayNum,
@@ -476,7 +478,16 @@ const DashboardAdminView = ({
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs divide-y divide-slate-100 overflow-hidden">
-            {priorityQueue.map((claim, idx) => {
+            {priorityQueue.length === 0 ? (
+              <div className="p-12 text-center text-slate-400">
+                <Inbox className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                <p className="text-sm font-semibold text-slate-700">Belum ada antrean klaim</p>
+                <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                  Klaim yang diajukan oleh Faskes mitra ({currentUser?.pairingCode || "BPJS-KC-JKT01"}) akan masuk ke antrean ini secara real-time.
+                </p>
+              </div>
+            ) : (
+              priorityQueue.map((claim, idx) => {
               // Exactly 1 single primary indicator badge per record (No rainbow clutter!)
               const singleStatusBadge = claim.isTampered
                 ? { label: "Segel Tidak Cocok", cls: "bg-rose-50 text-rose-700 border-rose-200" }
@@ -557,7 +568,7 @@ const DashboardAdminView = ({
                   </div>
                 </motion.div>
               );
-            })}
+            }))}
           </div>
         </div>
 
