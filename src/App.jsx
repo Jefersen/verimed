@@ -114,43 +114,59 @@ function App() {
     showToast(`Keputusan verifikasi disimpan: ${newStatus.replace("_", " ")}.`);
   };
   const handleToggleTamper = (claimId, shouldTamper, reason) => {
-    setClaims(
-      (prev) => prev.map((c) => {
-        if (c.id === claimId) {
-          const updated = {
-            ...c,
-            isTampered: shouldTamper,
-            tamperReason: shouldTamper ? reason || "Salinan berkas faskes dimodifikasi sepihak" : void 0
-          };
-          const evalResult = evaluateClaimRules(updated);
-          return {
-            ...updated,
-            findings: evalResult.findings,
-            riskScore: evalResult.riskScore,
-            riskBand: evalResult.riskBand,
-            fastTrack: evalResult.fastTrack
-          };
+    const applyTamperTransform = (c) => {
+      const orig = c._originalUntampered || {
+        billedAmount: c.billedAmount,
+        items: c.items,
+        resumeText: c.resumeText
+      };
+      let nextBilled = orig.billedAmount;
+      let nextItems = orig.items;
+      let nextResume = orig.resumeText;
+
+      if (shouldTamper) {
+        const isResumeTamper = reason && reason.toLowerCase().includes("resume");
+        if (isResumeTamper) {
+          nextResume = `${orig.resumeText} [Teks resume klinis dimodifikasi sepihak pasca-segel]`;
+        } else if (c._tamperedData) {
+          nextBilled = c._tamperedData.billedAmount;
+          nextItems = c._tamperedData.items;
+          nextResume = c._tamperedData.resumeText || orig.resumeText;
+        } else {
+          nextBilled = orig.billedAmount + 5e6;
+          nextItems = [
+            ...(orig.items || []),
+            {
+              code: "TAMPER-VIP",
+              description: "Tambahan Manipulasi Tagihan Sepihak Pasca-Segel",
+              amount: 5e6
+            }
+          ];
         }
-        return c;
-      })
-    );
+      }
+
+      const updated = {
+        ...c,
+        _originalUntampered: orig,
+        billedAmount: nextBilled,
+        items: nextItems,
+        resumeText: nextResume,
+        isTampered: shouldTamper,
+        tamperReason: shouldTamper ? reason || "Salinan berkas faskes dimodifikasi sepihak" : void 0
+      };
+      const evalResult = evaluateClaimRules(updated);
+      return {
+        ...updated,
+        findings: evalResult.findings,
+        riskScore: evalResult.riskScore,
+        riskBand: evalResult.riskBand,
+        fastTrack: evalResult.fastTrack
+      };
+    };
+
+    setClaims((prev) => prev.map((c) => (c.id === claimId ? applyTamperTransform(c) : c)));
     if (selectedClaim && selectedClaim.id === claimId) {
-      setSelectedClaim((prev) => {
-        if (!prev) return null;
-        const updated = {
-          ...prev,
-          isTampered: shouldTamper,
-          tamperReason: shouldTamper ? reason || "Salinan berkas faskes dimodifikasi sepihak" : void 0
-        };
-        const evalResult = evaluateClaimRules(updated);
-        return {
-          ...updated,
-          findings: evalResult.findings,
-          riskScore: evalResult.riskScore,
-          riskBand: evalResult.riskBand,
-          fastTrack: evalResult.fastTrack
-        };
-      });
+      setSelectedClaim((prev) => (prev ? applyTamperTransform(prev) : null));
     }
     const newLog = {
       id: `LOG-${Date.now().toString().slice(-4)}`,

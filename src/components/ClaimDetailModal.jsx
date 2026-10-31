@@ -47,6 +47,12 @@ const ClaimDetailModal = ({
   const [liveAiData, setLiveAiData] = useState(null);
   const [aiError, setAiError] = useState(null);
   const [reanalyzeCount, setReanalyzeCount] = useState(0);
+  const [auditTestResult, setAuditTestResult] = useState(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+
+  useEffect(() => {
+    setAuditTestResult(null);
+  }, [claim.id, claim.isTampered, claim.billedAmount, claim.resumeText]);
 
   const staticReasoning = generateAiClaimReasoning(claim);
   const aiReasoning = liveAiData?.reasoning || staticReasoning;
@@ -119,6 +125,22 @@ const ClaimDetailModal = ({
         onShowToast(res.error, "error");
       }
     }
+  };
+
+  const handleRunIntegrityAudit = () => {
+    setIsAuditing(true);
+    setTimeout(() => {
+      setIsAuditing(false);
+      const res = verifySealLeaves(claim.seal, currentLeaves);
+      setAuditTestResult(res);
+      if (onShowToast) {
+        if (res.isValid) {
+          onShowToast("Audit Integritas: LULUS UJI! Semua 5 Daun Merkle cocok dengan Segel Vault.", "success");
+        } else {
+          onShowToast(`Audit Integritas: GAGAL UJI! ${res.tamperedLeaves.length} daun Merkle terdeteksi diubah.`, "error");
+        }
+      }
+    }, 320);
   };
 
   const handleDraftNoteWithAi = async () => {
@@ -701,14 +723,33 @@ const ClaimDetailModal = ({
                 </p>
               </div>
 
-              {
-    /* Merkle Leaf Tree Breakdown */
-  }
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                  <GitBranch className="w-4 h-4 text-emerald-600" />
-                  Struktur 5 Daun Hash Merkle (PRD Section 7.2)
-                </h4>
+              {/* Merkle Leaf Tree Breakdown */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                    <GitBranch className="w-4 h-4 text-emerald-600" />
+                    Struktur 5 Daun Hash Merkle (PRD Section 7.2)
+                  </h4>
+                  <span
+                    className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${
+                      verificationResult.isValid
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border-rose-300"
+                    }`}
+                  >
+                    {verificationResult.isValid ? (
+                      <>
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Status: 5/5 Daun Cocok • Segel Utuh</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                        <span>Status: {verificationResult.tamperedLeaves.length} Daun Berubah • Segel Rusak</span>
+                      </>
+                    )}
+                  </span>
+                </div>
 
                 <div className="space-y-2">
                   {claim.seal.leaves.map((leaf, index) => {
@@ -732,9 +773,11 @@ const ClaimDetailModal = ({
                           </span>
                         </div>
 
-                        <div className="bg-slate-50 p-2 rounded-lg text-xs space-y-1">
+                        <div className={`${isLeafMatch ? "bg-slate-50" : "bg-white/90 border border-rose-200"} p-2 rounded-lg text-xs space-y-1.5`}>
                           <div className="flex items-center justify-between font-mono text-[11px] text-slate-600">
-                            <span className="truncate pr-2">Hash: {leaf.hash}</span>
+                            <span className="truncate pr-2">
+                              {isLeafMatch ? `Hash: ${leaf.hash}` : `Hash Segel Vault: ${leaf.hash}`}
+                            </span>
                             <button
       type="button"
       onClick={() => handleCopyHash(leaf.hash, leaf.id)}
@@ -744,8 +787,20 @@ const ClaimDetailModal = ({
                             </button>
                           </div>
                           {leaf.dataSnippet && <p className="text-[11px] text-slate-500 truncate">
-                              Data: {leaf.dataSnippet}
+                              {isLeafMatch ? `Data: ${leaf.dataSnippet}` : `Data Asli Vault: ${leaf.dataSnippet}`}
                             </p>}
+                          {!isLeafMatch && candidateLeaf && (
+                            <div className="pt-1.5 border-t border-rose-100 space-y-0.5">
+                              <p className="font-mono text-[11px] text-rose-700 font-semibold truncate">
+                                Hash Salinan Diubah: {candidateLeaf.hash}
+                              </p>
+                              {candidateLeaf.dataSnippet && (
+                                <p className="text-[11px] text-rose-600 font-medium truncate">
+                                  Data Salinan Saat Ini: {candidateLeaf.dataSnippet}
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>;
   })}
@@ -763,34 +818,87 @@ const ClaimDetailModal = ({
                   <span>Simulator Pengujian Integritas & Tamper Faskes</span>
                 </div>
                 <p>
-                  Sesuai PRD Bab 7.4 & 15: sistem VeriMed memverifikasi klaim dengan membandingkan salinan kerja yang diperlihatkan (working copy) terhadap segel asli di vault.
-                </p>
-                <p className="text-[11px] text-amber-700">
-                  Uji kemampuan deteksi real-time dengan mensimulasikan modifikasi sepihak pada salinan faskes:
+                  Sesuai PRD Bab 7.4 & 15: sistem VeriMed memverifikasi klaim dengan membandingkan salinan kerja yang diperlihatkan faskes (working copy) terhadap segel asli di vault.
                 </p>
               </div>
 
-              {
-    /* Current Tamper State Card */
-  }
+              {/* Status Card & Real-Time Integrity Audit */}
               <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <div>
                     <h4 className="text-sm font-bold text-slate-900">
-                      Status Integritas Salinan Kerja Faskes
+                      Status Integritas Salinan Kerja Saat Ini
                     </h4>
                     <p className="text-xs text-slate-500">
-                      {claim.isTampered ? "Salinan faskes ini sedang dalam status DIMODIFIKASI / TAMPERED" : "Salinan faskes ini 100% IDENTIK dengan segel vault"}
+                      {claim.isTampered
+                        ? "Salinan faskes ini sedang dalam status DIMODIFIKASI SEPIHAK (TAMPERED)"
+                        : "Salinan faskes ini 100% IDENTIK & COCOK dengan segel asli vault"}
                     </p>
                   </div>
 
-                  <span
-    className={`px-3 py-1 rounded-full text-xs font-bold ${claim.isTampered ? "bg-rose-600 text-white animate-pulse" : "bg-emerald-100 text-emerald-800"}`}
-  >
-                    {claim.isTampered ? "RUSAK / BERUBAH" : "SEPARASI UTUH"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold ${
+                        claim.isTampered
+                          ? "bg-rose-600 text-white animate-pulse"
+                          : "bg-emerald-100 text-emerald-800"
+                      }`}
+                    >
+                      {claim.isTampered ? "RUSAK / DIMODIFIKASI" : "SEPARASI UTUH"}
+                    </span>
+                  </div>
                 </div>
 
+                {/* Audit Integritas Button & Trigger */}
+                <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                  <div className="text-xs text-slate-600">
+                    <span className="font-semibold text-slate-800">Uji Validasi Kriptografi:</span>{" "}
+                    Verifikasi hash SHA-256 seluruh 5 daun salinan terhadap segel Ed25519 Vault.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRunIntegrityAudit}
+                    disabled={isAuditing}
+                    className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 shrink-0 shadow-xs cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isAuditing ? "animate-spin" : ""}`} />
+                    <span>{isAuditing ? "Memeriksa Hash..." : "Jalankan Audit Integritas"}</span>
+                  </button>
+                </div>
+
+                {/* Manual Audit Result Box */}
+                {auditTestResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                      auditTestResult.isValid
+                        ? "bg-emerald-50 border-emerald-300 text-emerald-950"
+                        : "bg-rose-50 border-rose-300 text-rose-950"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-bold text-xs">
+                      {auditTestResult.isValid ? (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>HASIL AUDIT KRIPTOGRAFIS: LULUS UJI (100% VALID & UTUH)</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                          <span>HASIL AUDIT KRIPTOGRAFIS: GAGAL UJI (SEGEL RUSAK / MODIFIKASI TERDETEKSI)</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[11px] leading-relaxed">
+                      {auditTestResult.isValid
+                        ? "Merkle Root salinan cocok sempurna dengan Merkle Root di Vault. Seluruh 5 daun hash SHA-256 identik tanpa perubahan satu karakter pun."
+                        : `Terdeteksi ${auditTestResult.tamperedLeaves.length} daun Merkle yang tidak cocok dengan segel Vault (${auditTestResult.tamperedLeaves.map((t) => t.label).join(", ")}). Salinan kerja ini terbukti telah dimanipulasi secara sepihak.`}
+                    </p>
+                  </motion.div>
+                )}
+
+                {/* AI Forensic Explanation Card when Tampered */}
                 {claim.isTampered && (
                   <div className="p-4 rounded-xl bg-rose-50/70 border border-rose-200 text-rose-900 text-xs space-y-2.5">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -837,43 +945,80 @@ const ClaimDetailModal = ({
                   </div>
                 )}
 
-                <div className="pt-2 flex flex-wrap gap-2.5">
-                  {!claim.isTampered ? <>
+                {/* Restore Button when Tampered */}
+                {claim.isTampered && (
+                  <div className="pt-2 border-t border-slate-100">
+                    <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-bold text-emerald-900">
+                          Pulihkan Salinan ke Segel Asli Vault
+                        </p>
+                        <p className="text-[11px] text-emerald-700 mt-0.5">
+                          Kembalikan data salinan faskes saat ini kembali ke data awal yang sah sesuai segel Vault (Tagihan: Rp 4.500.000).
+                        </p>
+                      </div>
                       <button
-    type="button"
-    data-tour="modal-btn-toggle-tamper"
-    onClick={() => onToggleTamper(
-      claim.id,
-      true,
-      "Nilai rincian tagihan (Leaf #2) dinaikkan +Rp 5.000.000 di salinan faskes setelah segel diterbitkan."
-    )}
-    className="px-3.5 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 font-semibold text-xs transition-colors flex items-center gap-1.5"
-  >
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        Simulasikan Tamper Nilai Tagihan
+                        type="button"
+                        data-tour="modal-btn-toggle-tamper"
+                        onClick={() => onToggleTamper(claim.id, false)}
+                        className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm cursor-pointer shrink-0"
+                      >
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Pulihkan Salinan ke Asli (Reset Tamper)</span>
                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
-                      <button
-    type="button"
-    onClick={() => onToggleTamper(
-      claim.id,
-      true,
-      "Teks resume klinis (Leaf #3) dimodifikasi untuk menghapus catatan kondisi fisik pasien."
-    )}
-    className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-semibold text-xs transition-colors flex items-center gap-1.5"
-  >
-                        <ShieldAlert className="w-3.5 h-3.5" />
-                        Simulasikan Tamper Teks Resume
-                      </button>
-                    </> : <button
-    type="button"
-    data-tour="modal-btn-toggle-tamper"
-    onClick={() => onToggleTamper(claim.id, false)}
-    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-xs"
-  >
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Pulihkan Salinan ke Segel Asli Vault (Reset Tamper)
-                    </button>}
+              {/* Zona Demonstrasi Manipulasi / Tamper Injection */}
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200/90 shadow-2xs space-y-3">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldAlert className="w-4 h-4 text-amber-600" />
+                    Zona Simulator Demonstrasi Kecurangan (Tamper Injection)
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Gunakan tombol di bawah ini untuk sengaja <strong>MENYUNTIKKAN MANIPULASI / FRAUD</strong> pada salinan kerja faskes guna menguji bagaimana sistem deteksi kriptografi dan AI VeriMed langsung mendeteksi kecurangan secara real-time:
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onToggleTamper(
+                        claim.id,
+                        true,
+                        claim._tamperedData
+                          ? "Nilai rincian tagihan (Leaf #2) dimanipulasi dengan akomodasi VIP Rp 9.500.000 dan obat khusus Rp 5.000.000 (total tagihan membengkak jadi Rp 14.500.000)."
+                          : "Nilai rincian tagihan (Leaf #2) dinaikkan +Rp 5.000.000 di salinan faskes setelah segel diterbitkan."
+                      )
+                    }
+                    className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-700 border border-rose-300 font-semibold text-xs transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>
+                      {claim.id === "CLM-004"
+                        ? "⚡ Suntik Manipulasi: Mark-up Tagihan VIP (Rp 14.500.000)"
+                        : "⚡ Suntik Manipulasi: Naikkan Tagihan (+Rp 5.000.000)"}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onToggleTamper(
+                        claim.id,
+                        true,
+                        "Teks resume klinis (Leaf #3) dimodifikasi untuk menghapus catatan kondisi fisik pasien."
+                      )
+                    }
+                    className="px-3.5 py-2.5 rounded-xl bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 font-semibold text-xs transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
+                  >
+                    <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>⚡ Suntik Manipulasi: Ubah Isi Teks Resume Klinis</span>
+                  </button>
                 </div>
               </div>
             </div>}

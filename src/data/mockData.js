@@ -1,5 +1,5 @@
-import { buildClaimLeaves, createSeal } from "../utils/crypto";
-import { evaluateClaimRules } from "../utils/rules";
+import { buildClaimLeaves, createSeal } from "../utils/crypto.js";
+import { evaluateClaimRules } from "../utils/rules.js";
 const INITIAL_USERS = [
   {
     id: "USR-ADMIN-01",
@@ -160,18 +160,19 @@ const INITIAL_LAB_RESULTS = [
   }
 ];
 function createInitialClaim(raw, prevSealHash) {
+  const sealSource = raw._originalUntampered ? { ...raw, ...raw._originalUntampered } : raw;
   const leaves = buildClaimLeaves({
-    encounterId: raw.encounterId,
-    patientPseudoId: raw.patientPseudoId,
-    admitDate: raw.admitDate,
-    dischargeDate: raw.dischargeDate,
-    inacbgCode: raw.inacbgCode,
-    severity: raw.severity,
-    billedAmount: raw.billedAmount,
-    items: raw.items,
-    resumeText: raw.resumeText,
-    labRefs: raw.labRefs,
-    version: raw.currentVersion
+    encounterId: sealSource.encounterId,
+    patientPseudoId: sealSource.patientPseudoId,
+    admitDate: sealSource.admitDate,
+    dischargeDate: sealSource.dischargeDate,
+    inacbgCode: sealSource.inacbgCode,
+    severity: sealSource.severity,
+    billedAmount: sealSource.billedAmount,
+    items: sealSource.items,
+    resumeText: sealSource.resumeText,
+    labRefs: sealSource.labRefs,
+    version: sealSource.currentVersion
   });
   const seal = createSeal({
     kind: "claim",
@@ -367,6 +368,22 @@ const seed4 = createInitialClaim(
       { code: "AKOM-RI-VIP", description: "Akomodasi Ruang VIP (Tagihan Digelembungkan)", amount: 95e5 },
       { code: "OBAT-SPECIAL", description: "Obat Injeksi Tambahan Non-Formularium", amount: 5e6 }
     ],
+    _originalUntampered: {
+      billedAmount: 45e5,
+      items: [
+        { code: "AKOM-RI-1", description: "Akomodasi Rawat Inap Kelas 1 (5 Hari)", amount: 25e5 },
+        { code: "OBAT-STD", description: "Terapi Antibiotik Ceftriaxone 2g/hari & Infus", amount: 2e6 }
+      ],
+      resumeText: "Pasien tifoid rawat inap 5 hari. Terapi ceftriaxone 2 gram/hari. Pasien dipulangkan dalam kondisi afebris dan klinis stabil."
+    },
+    _tamperedData: {
+      billedAmount: 145e5,
+      items: [
+        { code: "AKOM-RI-VIP", description: "Akomodasi Ruang VIP (Tagihan Digelembungkan)", amount: 95e5 },
+        { code: "OBAT-SPECIAL", description: "Obat Injeksi Tambahan Non-Formularium", amount: 5e6 }
+      ],
+      resumeText: "Pasien tifoid rawat inap 5 hari. Terapi ceftriaxone 2 gram/hari. [Catatan faskes: Berkas tagihan ini dimodifikasi secara sepihak setelah penyerahan segel awal]"
+    },
     resumeText: "Pasien tifoid rawat inap 5 hari. Terapi ceftriaxone 2 gram/hari. [Catatan faskes: Berkas tagihan ini dimodifikasi secara sepihak setelah penyerahan segel awal]",
     currentVersion: 1,
     status: "ditelaah",
