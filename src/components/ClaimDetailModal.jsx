@@ -156,10 +156,7 @@ const ClaimDetailModal = ({
       } catch {}
       if (claim) claim.aiAnalysis = toSave;
       if (onShowToast) {
-        onShowToast(
-          `Analisis ulang AI ke-#${nextCount} berhasil diproses oleh ${res.model} (${res.latencyMs} ms) dan disimpan.`,
-          "success"
-        );
+        onShowToast("Analisis AI berhasil diperbarui.", "success");
       }
     } else {
       setAiError({
@@ -479,12 +476,7 @@ const ClaimDetailModal = ({
                         {liveAiData ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 bg-teal-100/80 text-teal-900 border-teal-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            LLM: {liveAiData.model} ({(liveAiData.latencyMs / 1000).toFixed(1)} dtk) • Prompt #{liveAiData.reanalyzeCount}
-                            {liveAiData.isCached && (
-                              <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded-md bg-teal-200/90 text-teal-950 font-bold">
-                                Tersimpan (Hemat Token)
-                              </span>
-                            )}
+                            LLM: {liveAiData.model} ({(liveAiData.latencyMs / 1000).toFixed(1)} dtk)
                           </span>
                         ) : isAiScanning ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
