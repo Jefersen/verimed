@@ -233,8 +233,15 @@ const LabVaultView = ({
     COMMON_TESTS.find((t) => t.name === selectedTest) ||
     availableTestsForDevice[0] ||
     COMMON_TESTS[0];
-  const numVal = parseFloat(testValue) || 0;
-  const isAbnormal = numVal < testConfig.normalMin || numVal > testConfig.normalMax;
+  const hasTestValue =
+    testValue !== "" &&
+    testValue !== null &&
+    testValue !== undefined &&
+    !isNaN(Number(testValue));
+  const numVal = hasTestValue ? parseFloat(testValue) : null;
+  const isAbnormal = hasTestValue
+    ? numVal < testConfig.normalMin || numVal > testConfig.normalMax
+    : false;
 
   const handleDeviceChange = (newDeviceName) => {
     const devStr = String(newDeviceName);
@@ -307,8 +314,11 @@ const LabVaultView = ({
     if (!selectedTest) {
       errs.selectedTest = "Parameter uji wajib dipilih.";
     }
-    if (testValue === undefined || testValue === null || testValue === "" || isNaN(Number(testValue))) {
+    const valStr = String(testValue ?? "").trim();
+    if (valStr === "" || isNaN(Number(testValue))) {
       errs.testValue = "Nilai hasil pemeriksaan wajib diisi.";
+    } else if (!testConfig.isImaging && Number(testValue) <= 0) {
+      errs.testValue = "Nilai hasil pemeriksaan lab harus lebih besar dari 0.";
     }
     if (Object.keys(errs).length > 0) {
       setLabErrors(errs);
@@ -717,7 +727,7 @@ const LabVaultView = ({
                         </p>
 
                         <p className="text-[10px] font-mono text-emerald-400">
-                          Pembacaan Kuantitatif AI: {testValue} {testConfig.unit}
+                          Pembacaan Kuantitatif AI: {hasTestValue ? `${testValue} ${testConfig.unit}` : "-"}
                         </p>
                       </div>
                     </div>
@@ -750,11 +760,6 @@ const LabVaultView = ({
                             setTestValue("");
                           }
                         }}
-                        onBlur={() => {
-                          if (testValue === "" || isNaN(Number(testValue))) {
-                            setTestValue(0);
-                          }
-                        }}
                         className={`w-full px-3 py-2 text-xs font-mono font-bold border rounded-xl bg-white focus:ring-2 transition-colors ${
                           labErrors.testValue
                             ? "border-rose-500 bg-rose-50/20 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
@@ -762,9 +767,15 @@ const LabVaultView = ({
                         }`}
                       />
                       <span
-                        className={`text-xs px-2.5 py-1.5 rounded-lg font-bold shrink-0 ${isAbnormal ? "bg-amber-100 text-amber-800 border border-amber-200" : "bg-emerald-100 text-emerald-800 border border-emerald-200"}`}
+                        className={`text-xs px-2.5 py-1.5 rounded-lg font-bold shrink-0 ${
+                          !hasTestValue
+                            ? "bg-slate-100 text-slate-500 border border-slate-200"
+                            : isAbnormal
+                            ? "bg-amber-100 text-amber-800 border border-amber-200"
+                            : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        }`}
                       >
-                        {isAbnormal ? "Di Luar Normal" : "Normal"}
+                        {!hasTestValue ? "Belum Diisi" : isAbnormal ? "Di Luar Normal" : "Normal"}
                       </span>
                     </div>
                     {labErrors.testValue && (

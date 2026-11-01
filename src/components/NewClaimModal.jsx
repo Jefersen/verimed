@@ -284,7 +284,8 @@ const NewClaimModal = ({
     if (!primaryDxName || !primaryDxName.trim()) {
       errs.primaryDxName = "Nama Diagnosis Primer wajib diisi.";
     }
-    if (!billedAmount || Number(billedAmount) <= 0) {
+    const billedNum = Number(billedAmount);
+    if (billedAmount === "" || billedAmount === null || billedAmount === undefined || isNaN(billedNum) || billedNum <= 0) {
       errs.billedAmount = "Tarif Billed wajib diisi dengan nominal lebih dari Rp 0.";
     }
     if (!resumeText || !resumeText.trim()) {
@@ -931,7 +932,7 @@ const NewClaimModal = ({
                   <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs">
                     <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">TARIF STANDAR BPJS</span>
                     <span className="font-mono font-bold text-slate-900 text-sm block mt-0.5">
-                      Rp {billedAmount.toLocaleString("id-ID")}
+                      Rp {Number(billedAmount || 0).toLocaleString("id-ID")}
                     </span>
                     <span className="text-[10px] text-[#0E947A] font-semibold block mt-0.5">
                       ✓ Tarif Terstandar Ditagihkan
@@ -1101,11 +1102,6 @@ const NewClaimModal = ({
                   onFocus={() => {
                     if (billedAmount === 0 || billedAmount === "0") {
                       setBilledAmount("");
-                    }
-                  }}
-                  onBlur={() => {
-                    if (billedAmount === "" || isNaN(Number(billedAmount))) {
-                      setBilledAmount(0);
                     }
                   }}
                   className={`w-full px-3 py-2 text-xs font-mono font-bold border rounded-xl focus:ring-2 bg-white transition-colors ${
