@@ -50,11 +50,20 @@ const DashboardAdminView = ({
     (c) => c.isTampered || c.findings.some((f) => f.ruleId === "R-SEAL")
   ).length;
 
+  const [adminQueueSort, setAdminQueueSort] = useState("newest"); // DEFAULT: Waktu Terbaru
+
   const priorityQueue = [...claims]
     .sort((a, b) => {
-      if (a.isTampered && !b.isTampered) return -1;
-      if (!a.isTampered && b.isTampered) return 1;
-      return b.riskScore - a.riskScore;
+      if (adminQueueSort === "risk") {
+        if (a.isTampered && !b.isTampered) return -1;
+        if (!a.isTampered && b.isTampered) return 1;
+        return b.riskScore - a.riskScore;
+      }
+      if (adminQueueSort === "highest_billed") {
+        return (Number(b.billedAmount) || 0) - (Number(a.billedAmount) || 0);
+      }
+      // DEFAULT: Waktu yang terbaru selalu tampil pertama
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     })
     .slice(0, 5);
 
@@ -457,7 +466,7 @@ const DashboardAdminView = ({
       {/* Row 4: Split Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
         <div className="lg:col-span-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div className="flex items-center gap-2.5">
               <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
                 Antrean Prioritas Verifikasi Klaim
@@ -467,14 +476,39 @@ const DashboardAdminView = ({
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleGoQueue}
-              className="text-xs font-bold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group"
-            >
-              <span>Buka Seluruh Antrean</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-slate-400 font-semibold">Urutkan:</span>
+              <button
+                type="button"
+                onClick={() => setAdminQueueSort("newest")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer border ${
+                  adminQueueSort === "newest"
+                    ? "bg-emerald-50 text-[#0E947A] border-emerald-300"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                Waktu Terbaru (Default)
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdminQueueSort("risk")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer border ${
+                  adminQueueSort === "risk"
+                    ? "bg-rose-50 text-rose-700 border-rose-300"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                Risiko Tertinggi
+              </button>
+              <button
+                type="button"
+                onClick={handleGoQueue}
+                className="text-xs font-bold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group ml-1"
+              >
+                <span>Lihat Semua</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs divide-y divide-slate-100 overflow-hidden">

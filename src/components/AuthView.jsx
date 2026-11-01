@@ -5,7 +5,9 @@ import {
   Building2,
   ShieldAlert,
   Eye,
-  EyeOff
+  EyeOff,
+  RefreshCw,
+  Sparkles
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
@@ -17,6 +19,7 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [facilityName, setFacilityName] = useState("");
+  const generateRandomPairing = () => `BPJS-KC-${Math.floor(1000 + Math.random() * 9000)}`;
   const [pairingCode, setPairingCode] = useState("BPJS-KC-JKT01");
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -535,7 +538,10 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={() => setIsRegister(false)}
+                  onClick={() => {
+                    setIsRegister(false);
+                    setErrorMsg("");
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${!isRegister
                       ? "bg-white text-slate-900 shadow-2xs"
                       : "text-slate-500 hover:text-slate-800"
@@ -545,7 +551,11 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsRegister(true)}
+                  onClick={() => {
+                    setIsRegister(true);
+                    setErrorMsg("");
+                    setPairingCode(generateRandomPairing());
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${isRegister
                       ? "bg-white text-slate-900 shadow-2xs"
                       : "text-slate-500 hover:text-slate-800"
@@ -628,7 +638,21 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
               </AnimatePresence>
 
               {/* Kode Kemitraan / Pairing Admin BPJS (Both Admin & Faskes) */}
-              <div className="space-y-1">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[11px] font-bold text-slate-700">
+                    {selectedRole === "admin" ? "Kode Kantor Cabang BPJS" : "Kode Pairing Mitra BPJS"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPairingCode(generateRandomPairing())}
+                    className="text-[10px] text-[#0E947A] hover:text-[#0B7A64] font-bold flex items-center gap-1 cursor-pointer hover:underline"
+                    title="Buat kode unik baru untuk ruang kerja terpisah"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Buat Kode Baru</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type="text"
@@ -636,8 +660,8 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                     onChange={(e) => setPairingCode(e.target.value.toUpperCase())}
                     placeholder={
                       selectedRole === "admin"
-                        ? "Kode Cabang / Pairing (cth: BPJS-KC-JKT01)"
-                        : "Kode Kemitraan Admin BPJS (cth: BPJS-KC-JKT01)"
+                        ? "Kode Cabang (cth: BPJS-KC-1024)"
+                        : "Kode Mitra (cth: BPJS-KC-1024)"
                     }
                     className="w-full pl-4 pr-32 py-3.5 text-xs sm:text-sm font-mono font-bold rounded-2xl bg-[#F5F7F9] hover:bg-[#EDF1F5] focus:bg-white text-[#0E947A] placeholder:text-slate-400 placeholder:font-sans placeholder:font-medium border border-transparent focus:border-[#0E947A]/35 transition-all"
                   />
@@ -645,11 +669,25 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                     {selectedRole === "admin" ? "Kode Cabang" : "Kode Pairing"}
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 px-1 font-medium">
-                  {selectedRole === "admin"
-                    ? "Kode pairing kantor cabang untuk sinkronisasi data klaim & lab dari faskes mitra."
-                    : "Samakan kode ini dengan kode kantor cabang verifikator BPJS mitra Anda."}
-                </p>
+                {isRegister ? (
+                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[10px] text-slate-600 leading-relaxed space-y-1">
+                    <p className="font-bold text-[#0E947A] flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 shrink-0" />
+                      <span>{selectedRole === "admin" ? "Ruang Kerja Cabang Terisolasi" : "Koneksi ke Admin atau Mandiri"}</span>
+                    </p>
+                    <p>
+                      {selectedRole === "admin"
+                        ? "Kode ini adalah identitas kantor cabang Anda. Berikan kode ini ke Faskes mitra agar klaim mereka masuk ke antrean Anda."
+                        : "Ketik kode yang SAMA dengan Admin BPJS Anda jika ingin klaim Anda masuk ke antrean verifikator tersebut. Jika ingin akun mandiri/terpisah, gunakan kode acak di atas."}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-[10px] text-slate-400 px-1 font-medium">
+                    {selectedRole === "admin"
+                      ? "Kode pairing kantor cabang untuk sinkronisasi data klaim & lab dari faskes mitra."
+                      : "Samakan kode ini dengan kode kantor cabang verifikator BPJS mitra Anda."}
+                  </p>
+                )}
               </div>
 
               {/* Email Input */}

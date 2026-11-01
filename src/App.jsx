@@ -128,13 +128,27 @@ function App() {
 
   // Sync real tenant data across browser tabs and backend database
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setClaims([]);
+      setSeals([]);
+      setLabResults([]);
+      setAuditLogs([]);
+      setSelectedClaim(null);
+      return;
+    }
 
     if (currentUser.isDemo) {
       // Demo mode maintains its interactive session in-memory and in sessionStorage.
       // Do NOT reset to INITIAL_CLAIMS on role switch!
       return;
     }
+
+    // Immediately clean previous user's data from in-memory state before loading this real tenant
+    setClaims([]);
+    setSeals([]);
+    setLabResults([]);
+    setAuditLogs([]);
+    setSelectedClaim(null);
 
     const pairing = currentUser.pairingCode || "BPJS-KC-JKT01";
     let isMounted = true;
@@ -599,9 +613,15 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     }}
     onLogout={() => {
       setCurrentUser(null);
+      setClaims([]);
+      setSeals([]);
+      setLabResults([]);
+      setAuditLogs([]);
+      setSelectedClaim(null);
       try {
         sessionStorage.removeItem("verimed_active_user");
         localStorage.removeItem("verimed_active_user");
+        sessionStorage.removeItem("verimed_token");
       } catch {}
       showToast("Anda telah keluar.");
     }}

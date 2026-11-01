@@ -12,7 +12,8 @@ import {
   ArrowRight,
   Sparkles,
   Inbox,
-  FileCheck2
+  FileCheck2,
+  ArrowUpDown
 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
 import { generateAiClaimReasoning } from "../utils/rules";
@@ -33,6 +34,7 @@ const ClaimsListView = ({
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedFacility, setSelectedFacility] = useState("all");
   const [selectedAnomalyType, setSelectedAnomalyType] = useState("all");
+  const [sortBy, setSortBy] = useState("newest"); // DEFAULT: Urutan waktu terbaru
   const facilities = Array.from(new Set(claims.map((c) => c.facilityName)));
   const waitingCount = claims.filter(
     (c) => c.status === "menunggu_verifikasi" || c.status === "ditelaah"
@@ -40,6 +42,16 @@ const ClaimsListView = ({
   const anomalyCount = claims.filter(
     (c) => c.findings.length > 0 || c.isTampered
   ).length;
+
+  const sortOptions = [
+    { value: "newest", label: "Waktu Terbaru (Terakhir Diajukan)" },
+    { value: "oldest", label: "Waktu Terlama (Terawal)" },
+    { value: "highest_billed", label: "Tarif Tertinggi (Rp)" },
+    { value: "lowest_billed", label: "Tarif Terendah (Rp)" },
+    { value: "highest_risk", label: "Tingkat Risiko Tertinggi" },
+    { value: "longest_los", label: "Lama Rawat (LOS) Terpanjang" }
+  ];
+
   const scopedClaims = isAdmin ? claims.filter((claim) => {
     if (adminSubTab === "queue") {
       return claim.status === "menunggu_verifikasi" || claim.status === "ditelaah";
@@ -49,6 +61,7 @@ const ClaimsListView = ({
     }
     return true;
   }) : claims.filter((c) => c.facilityId === currentUser.facilityId);
+
   const filteredClaims = scopedClaims.filter((claim) => {
     const matchesSearch = claim.claimNumber.toLowerCase().includes(searchQuery.toLowerCase()) || claim.patientPseudoId.toLowerCase().includes(searchQuery.toLowerCase()) || claim.primaryDiagnosis.name.toLowerCase().includes(searchQuery.toLowerCase()) || claim.primaryDiagnosis.code.toLowerCase().includes(searchQuery.toLowerCase()) || claim.inacbgCode.toLowerCase().includes(searchQuery.toLowerCase()) || claim.facilityName.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesRisk = selectedRiskBand === "all" ? true : selectedRiskBand === "fast_track" ? claim.fastTrack : claim.riskBand === selectedRiskBand;
@@ -57,14 +70,27 @@ const ClaimsListView = ({
     const matchesAnomaly = selectedAnomalyType === "all" ? true : selectedAnomalyType === "upcoding" ? claim.findings.some((f) => f.type === "upcoding") : selectedAnomalyType === "unbundling" ? claim.findings.some((f) => f.type === "unbundling") : selectedAnomalyType === "seal_tamper" ? claim.isTampered || claim.findings.some((f) => f.ruleId === "R-SEAL") : true;
     return matchesSearch && matchesRisk && matchesStatus && matchesFacility && matchesAnomaly;
   }).sort((a, b) => {
-    if (isAdmin && adminSubTab === "queue") {
+    if (sortBy === "oldest") {
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    }
+    if (sortBy === "highest_billed") {
+      return (Number(b.billedAmount) || 0) - (Number(a.billedAmount) || 0);
+    }
+    if (sortBy === "lowest_billed") {
+      return (Number(a.billedAmount) || 0) - (Number(b.billedAmount) || 0);
+    }
+    if (sortBy === "highest_risk") {
       if (a.isTampered && !b.isTampered) return -1;
       if (!a.isTampered && b.isTampered) return 1;
       const riskWeight = { Tinggi: 3, Sedang: 2, Rendah: 1 };
-      const diff = riskWeight[b.riskBand] - riskWeight[a.riskBand];
+      const diff = (riskWeight[b.riskBand] || 0) - (riskWeight[a.riskBand] || 0);
       if (diff !== 0) return diff;
-      return b.riskScore - a.riskScore;
+      return (b.riskScore || 0) - (a.riskScore || 0);
     }
+    if (sortBy === "longest_los") {
+      return (Number(b.losDays) || 0) - (Number(a.losDays) || 0);
+    }
+    // DEFAULT: "newest" (Waktu yang terbaru diajukan selalu teratas untuk Admin dan Faskes)
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   });
   return <div className="space-y-5">
@@ -244,6 +270,16 @@ const ClaimsListView = ({
     ]}
     placeholder="Status Telaah..."
   />
+          </div>
+
+          {/* Sort By Filter */}
+          <div className="w-full md:w-56">
+            <CustomSelect
+              value={sortBy}
+              onChange={(val) => setSortBy(val)}
+              options={sortOptions}
+              placeholder="Urutkan..."
+            />
           </div>
         </div>
 

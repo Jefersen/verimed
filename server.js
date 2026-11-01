@@ -497,12 +497,14 @@ function getTenant(db, pairingCode) {
 
 // Register real user endpoint
 app.post("/api/auth/register", (req, res) => {
-  const { email, password, name, role = "admin", facilityName, pairingCode = "BPJS-KC-JKT01" } = req.body || {};
+  const { email, password, name, role = "admin", facilityName, pairingCode } = req.body || {};
   if (!email || !password) {
     return res.status(400).json({ success: false, error: "Email dan kata sandi wajib diisi." });
   }
   const cleanEmail = email.trim().toLowerCase();
-  const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+  const cleanCode = (pairingCode && String(pairingCode).trim())
+    ? String(pairingCode).trim().toUpperCase()
+    : `BPJS-KC-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
   const db = readDb();
   if (!Array.isArray(db.users)) db.users = [];
 
@@ -550,7 +552,9 @@ app.post("/api/auth/login", (req, res) => {
   const found = db.users.find((u) => u.email.toLowerCase() === cleanEmail);
 
   if (!found) {
-    const cleanCode = (pairingCode || "BPJS-KC-JKT01").trim().toUpperCase();
+    const cleanCode = (pairingCode && String(pairingCode).trim())
+      ? String(pairingCode).trim().toUpperCase()
+      : `BPJS-KC-${crypto.randomBytes(2).toString("hex").toUpperCase()}`;
     const cleanRole = role || (cleanEmail.includes("admin") || cleanEmail.includes("bpjs") ? "admin" : "faskes");
     const userId = `USR-${Date.now()}`;
     const facilityId = cleanRole === "faskes" ? `FK-${Date.now().toString().slice(-4)}` : undefined;

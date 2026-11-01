@@ -43,7 +43,20 @@ const DashboardFaskesView = ({
   );
   const approvedClaims = myClaims.filter((c) => c.status === "disetujui");
   const totalBilled = myClaims.reduce((acc, c) => acc + c.billedAmount, 0);
-  const recentClaims = [...myClaims].slice(0, 5);
+  const [faskesSort, setFaskesSort] = useState("newest"); // DEFAULT: Waktu Terbaru
+
+  const recentClaims = [...myClaims]
+    .sort((a, b) => {
+      if (faskesSort === "highest_billed") {
+        return (Number(b.billedAmount) || 0) - (Number(a.billedAmount) || 0);
+      }
+      if (faskesSort === "oldest") {
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      }
+      // DEFAULT: Waktu terbaru diajukan selalu di atas
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    })
+    .slice(0, 5);
 
   // Build 14-day Faskes series showing Jumlah Permintaan Klaim & Total Harga yang Diminta
   const dailyRequestCounts = [2, 3, 4, 1, 3, 2, 1, 2, 3, 2, 1, 4, 2, 1];
@@ -416,21 +429,46 @@ const DashboardFaskesView = ({
       {/* Row 4: Split Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
         <div className="lg:col-span-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h2 className="text-lg font-extrabold text-slate-900 tracking-tight">
                 Riwayat Pengajuan Klaim {currentUser.facilityName}
               </h2>
             </div>
 
-            <button
-              type="button"
-              onClick={onGoToKlaimSaya}
-              className="text-xs font-bold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group"
-            >
-              <span>Lihat Semua Klaim Saya</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[11px] text-slate-400 font-semibold">Urutkan:</span>
+              <button
+                type="button"
+                onClick={() => setFaskesSort("newest")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer border ${
+                  faskesSort === "newest"
+                    ? "bg-emerald-50 text-[#0E947A] border-emerald-300"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                Waktu Terbaru (Default)
+              </button>
+              <button
+                type="button"
+                onClick={() => setFaskesSort("highest_billed")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer border ${
+                  faskesSort === "highest_billed"
+                    ? "bg-emerald-50 text-[#0E947A] border-emerald-300"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                Tarif Tertinggi
+              </button>
+              <button
+                type="button"
+                onClick={onGoToKlaimSaya}
+                className="text-xs font-bold text-[#0E947A] hover:text-[#0B7A64] flex items-center gap-1 transition-colors cursor-pointer group ml-1"
+              >
+                <span>Lihat Semua</span>
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-2xl border border-slate-200/70 shadow-2xs divide-y divide-slate-100 overflow-hidden">

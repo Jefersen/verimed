@@ -57,11 +57,37 @@ const ClaimDetailModal = ({
   const staticReasoning = generateAiClaimReasoning(claim);
   const aiReasoning = liveAiData?.reasoning || staticReasoning;
 
+  // Cache helper to store & retrieve AI forensic analysis per claim to avoid draining tokens on every modal open
+  const getAiCacheKey = (c) =>
+    `verimed_ai_cache_${c.id}_v${c.currentVersion || 1}_${c.isTampered ? "tampered" : "clean"}_${c.billedAmount || 0}`;
+
   // Auto-check AI status on open or when claim/tamper state changes
   useEffect(() => {
     let cancelled = false;
-    setLiveAiData(null);
     setAiError(null);
+
+    // 1. Check if claim already has a saved AI analysis in sessionStorage or on the claim object
+    const cacheKey = getAiCacheKey(claim);
+    let existingAiData = claim.aiAnalysis || null;
+    if (!existingAiData) {
+      try {
+        const stored = sessionStorage.getItem(cacheKey);
+        if (stored) {
+          existingAiData = JSON.parse(stored);
+        }
+      } catch {}
+    }
+
+    if (existingAiData) {
+      // Saved analysis found! Use it immediately without calling the live LLM API (0 tokens consumed!)
+      setLiveAiData({ ...existingAiData, isCached: true });
+      setIsAiScanning(false);
+      setReanalyzeCount(existingAiData.reanalyzeCount || 1);
+      return;
+    }
+
+    // 2. No saved analysis yet - trigger AI scan once
+    setLiveAiData(null);
     setReanalyzeCount(0);
 
     async function initAiCheck() {
@@ -75,9 +101,18 @@ const ClaimDetailModal = ({
         if (cancelled) return;
         setIsAiScanning(false);
         if (res.success) {
-          setLiveAiData(res);
+          const toSave = {
+            ...res,
+            reanalyzeCount: 1,
+            cachedAt: new Date().toISOString()
+          };
+          setLiveAiData(toSave);
           setReanalyzeCount(1);
           setAiError(null);
+          try {
+            sessionStorage.setItem(cacheKey, JSON.stringify(toSave));
+          } catch {}
+          if (claim) claim.aiAnalysis = toSave;
         } else {
           setAiError({
             code: res.code,
@@ -97,7 +132,7 @@ const ClaimDetailModal = ({
     return () => {
       cancelled = true;
     };
-  }, [claim.id, claim.isTampered, claim.currentVersion]);
+  }, [claim.id, claim.isTampered, claim.currentVersion, claim.billedAmount]);
 
   const handleRunAiScan = async () => {
     setIsAiScanning(true);
@@ -107,12 +142,22 @@ const ClaimDetailModal = ({
     setIsAiScanning(false);
 
     if (res.success) {
-      setLiveAiData(res);
+      const toSave = {
+        ...res,
+        reanalyzeCount: nextCount,
+        cachedAt: new Date().toISOString()
+      };
+      setLiveAiData(toSave);
       setReanalyzeCount(nextCount);
       setAiError(null);
+      const cacheKey = getAiCacheKey(claim);
+      try {
+        sessionStorage.setItem(cacheKey, JSON.stringify(toSave));
+      } catch {}
+      if (claim) claim.aiAnalysis = toSave;
       if (onShowToast) {
         onShowToast(
-          `Analisis ulang AI ke-#${nextCount} berhasil diproses oleh ${res.model} (${res.latencyMs} ms).`,
+          `Analisis ulang AI ke-#${nextCount} berhasil diproses oleh ${res.model} (${res.latencyMs} ms) dan disimpan.`,
           "success"
         );
       }
@@ -434,7 +479,12 @@ const ClaimDetailModal = ({
                         {liveAiData ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 bg-teal-100/80 text-teal-900 border-teal-300">
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Live LLM: {liveAiData.model} ({(liveAiData.latencyMs / 1000).toFixed(1)} dtk) • Prompt #{liveAiData.reanalyzeCount}
+                            LLM: {liveAiData.model} ({(liveAiData.latencyMs / 1000).toFixed(1)} dtk) • Prompt #{liveAiData.reanalyzeCount}
+                            {liveAiData.isCached && (
+                              <span className="ml-1 text-[9px] px-1.5 py-0.5 rounded-md bg-teal-200/90 text-teal-950 font-bold">
+                                Tersimpan (Hemat Token)
+                              </span>
+                            )}
                           </span>
                         ) : isAiScanning ? (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-800 border border-sky-200">
