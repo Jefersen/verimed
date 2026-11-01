@@ -9,7 +9,12 @@ import {
   Sparkles,
   Search,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle,
+  Settings2,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
 import { buildClaimLeaves, createSeal } from "../utils/crypto";
@@ -236,6 +241,58 @@ const NewClaimModal = ({
   const [aiGroupingResult, setAiGroupingResult] = useState(null);
   const [aiGrouperWarning, setAiGrouperWarning] = useState(null);
 
+  // Manual override toggle for INA-CBG package & severity
+  const [isManualOverrideOpen, setIsManualOverrideOpen] = useState(false);
+
+  // Form validation & error states
+  const [formErrors, setFormErrors] = useState({});
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+
+  const clearFieldError = (field) => {
+    if (formErrors[field]) {
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
+  };
+
+  const validateForm = () => {
+    const errs = {};
+    if (!encounterId || !encounterId.trim()) {
+      errs.encounterId = "ID Kunjungan (Encounter ID) wajib diisi.";
+    }
+    if (!patientPseudoId || !patientPseudoId.trim()) {
+      errs.patientPseudoId = "ID Pseudonim Pasien wajib diisi.";
+    }
+    if (!admitDate) {
+      errs.admitDate = "Tanggal Masuk wajib diisi.";
+    }
+    if (!dischargeDate) {
+      errs.dischargeDate = "Tanggal Pulang wajib diisi.";
+    }
+    if (admitDate && dischargeDate && new Date(dischargeDate) < new Date(admitDate)) {
+      errs.dischargeDate = "Tanggal Pulang tidak boleh mendahului Tanggal Masuk.";
+    }
+    if (!selectedInacbg) {
+      errs.selectedInacbg = "Paket INA-CBG wajib ditentukan.";
+    }
+    if (!primaryDxCode || !primaryDxCode.trim()) {
+      errs.primaryDxCode = "Kode Diagnosis Primer (ICD-10) wajib diisi.";
+    }
+    if (!primaryDxName || !primaryDxName.trim()) {
+      errs.primaryDxName = "Nama Diagnosis Primer wajib diisi.";
+    }
+    if (!billedAmount || Number(billedAmount) <= 0) {
+      errs.billedAmount = "Tarif Billed wajib diisi dengan nominal lebih dari Rp 0.";
+    }
+    if (!resumeText || !resumeText.trim()) {
+      errs.resumeText = "Teks Resume Medis wajib diisi sebagai bukti rekam klinis (Leaf #3).";
+    }
+    return errs;
+  };
+
   const losDays = Math.max(
     1,
     Math.round(
@@ -244,6 +301,7 @@ const NewClaimModal = ({
   );
   const handleInacbgChange = (code) => {
     setSelectedInacbg(code);
+    clearFieldError("selectedInacbg");
     const found = inacbgList.find((item) => item.code === code);
     if (found) {
       setSeverity(found.defaultSev);
@@ -253,6 +311,10 @@ const NewClaimModal = ({
       if (found.resume) {
         setResumeText(found.resume);
       }
+      clearFieldError("primaryDxCode");
+      clearFieldError("primaryDxName");
+      clearFieldError("billedAmount");
+      clearFieldError("resumeText");
     }
   };
 
@@ -286,12 +348,69 @@ const NewClaimModal = ({
       setPrimaryDxName(grouped.dxName);
       if (grouped.resume) setResumeText(grouped.resume);
       setAiGroupingResult(grouped);
+      setIsManualOverrideOpen(false);
+
+      // Clear related errors since AI auto-populated valid values
+      setFormErrors((prev) => {
+        const next = { ...prev };
+        delete next.selectedInacbg;
+        delete next.primaryDxCode;
+        delete next.primaryDxName;
+        delete next.billedAmount;
+        delete next.resumeText;
+        return next;
+      });
     } else {
-      setAiGroupingResult(null);
-      setAiGrouperWarning(
-        apiRes.error ||
-          "API Key AI belum dihubungkan di menu Konfigurasi AI (peran Admin). Silakan hubungkan API Key terlebih dahulu untuk menggunakan AI Auto-Grouper."
+      // Resilient fallback to local Permenkes No. 3/2023 catalog
+      const matched = BPJS_AI_GROUPER_CATALOG.find((cat) =>
+        cat.keywords.some((kw) => query.toLowerCase().includes(kw))
       );
+      if (matched) {
+        const rom = severity === 3 || severity === 4 ? "III" : severity === 2 ? "II" : "I";
+        const code = `${matched.baseCode}-${rom}`;
+        const tariff = matched.tariffs[severity] || matched.tariffs[1] || 4850000;
+        const localGrouped = {
+          code,
+          name: matched.name,
+          defaultSev: severity,
+          defaultAmount: tariff,
+          dxCode: matched.dxCode,
+          dxName: matched.dxName,
+          cmg: matched.cmg,
+          resume: matched.resume,
+          aiReason: `Dipetakan ke ${code} (${matched.name}) dengan kode diagnosis ${matched.dxCode} berdasarkan katalog standar Permenkes No. 3/2023.`,
+          isLiveAi: false,
+          model: "Kamus Standar Permenkes No. 3/2023"
+        };
+        setInacbgList((prev) => {
+          const exists = prev.some((item) => item.code === localGrouped.code);
+          return exists ? prev.map((it) => (it.code === localGrouped.code ? localGrouped : it)) : [localGrouped, ...prev];
+        });
+        setSelectedInacbg(localGrouped.code);
+        setSeverity(localGrouped.defaultSev);
+        setBilledAmount(localGrouped.defaultAmount);
+        setPrimaryDxCode(localGrouped.dxCode);
+        setPrimaryDxName(localGrouped.dxName);
+        if (localGrouped.resume) setResumeText(localGrouped.resume);
+        setAiGroupingResult(localGrouped);
+        setIsManualOverrideOpen(false);
+
+        setFormErrors((prev) => {
+          const next = { ...prev };
+          delete next.selectedInacbg;
+          delete next.primaryDxCode;
+          delete next.primaryDxName;
+          delete next.billedAmount;
+          delete next.resumeText;
+          return next;
+        });
+      } else {
+        setAiGroupingResult(null);
+        setAiGrouperWarning(
+          apiRes.error ||
+            "API Key AI belum dihubungkan di menu Konfigurasi AI (peran Admin). Silakan hubungkan API Key terlebih dahulu untuk menggunakan AI Auto-Grouper."
+        );
+      }
     }
   };
   const handleAddLabRef = (labId) => {
@@ -336,6 +455,15 @@ const NewClaimModal = ({
   });
   const handleSubmit = (e) => {
     e.preventDefault();
+    setHasAttemptedSubmit(true);
+
+    const errs = validateForm();
+    if (Object.keys(errs).length > 0) {
+      setFormErrors(errs);
+      return; // BLOCKED: Wajib diisi semua sebelum boleh disimpan / dikirim!
+    }
+    setFormErrors({});
+
     const claimId = `CLM-${Date.now().toString().slice(-4)}`;
     const claimNumber = `CLM-2026-${Date.now().toString().slice(-3)}`;
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
@@ -495,64 +623,141 @@ const NewClaimModal = ({
           </button>
         </div>
 
-        {
-    /* Form Body */
-  }
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} noValidate className="flex flex-col flex-1 min-h-0 overflow-hidden">
           <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
+            {/* Top Error Alert Banner if validation failed */}
+            {hasAttemptedSubmit && Object.keys(formErrors).length > 0 && (
+              <div className="p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-xs text-rose-900 flex items-start gap-3 shadow-xs">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-rose-950">
+                    Pengajuan Belum Lengkap: Ada Bidang Wajib (*) yang Belum Diisi
+                  </p>
+                  <p className="text-[11px] text-rose-800 leading-relaxed">
+                    Mohon lengkapi seluruh kolom bertanda bintang merah <span className="text-rose-600 font-bold">(*)</span> dan bergaris merah di bawah sebelum klaim dapat disegel kriptografis.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                ID Kunjungan (Encounter ID)
-              </label>
-              <input
-    type="text"
-    value={encounterId}
-    onChange={(e) => setEncounterId(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    ID Kunjungan (Encounter ID) <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.encounterId && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={encounterId}
+                  onChange={(e) => {
+                    setEncounterId(e.target.value);
+                    clearFieldError("encounterId");
+                  }}
+                  className={`w-full px-3 py-2 text-xs font-mono border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.encounterId
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.encounterId && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.encounterId}
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                ID Pseudonim Pasien (UU PDP)
-              </label>
-              <input
-    type="text"
-    value={patientPseudoId}
-    onChange={(e) => setPatientPseudoId(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    ID Pseudonim Pasien (UU PDP) <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.patientPseudoId && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={patientPseudoId}
+                  onChange={(e) => {
+                    setPatientPseudoId(e.target.value);
+                    clearFieldError("patientPseudoId");
+                  }}
+                  className={`w-full px-3 py-2 text-xs font-mono border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.patientPseudoId
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.patientPseudoId && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.patientPseudoId}
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Tanggal Masuk (Admit Date)
-              </label>
-              <input
-    type="date"
-    value={admitDate}
-    onChange={(e) => setAdmitDate(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    Tanggal Masuk (Admit Date) <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.admitDate && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="date"
+                  value={admitDate}
+                  onChange={(e) => {
+                    setAdmitDate(e.target.value);
+                    clearFieldError("admitDate");
+                  }}
+                  className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.admitDate
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.admitDate && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.admitDate}
+                  </p>
+                )}
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Tanggal Pulang (Discharge Date) • LOS: {losDays} Hari
-              </label>
-              <input
-    type="date"
-    value={dischargeDate}
-    onChange={(e) => setDischargeDate(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    Tanggal Pulang (Discharge Date) • LOS: {losDays} Hari <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.dischargeDate && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="date"
+                  value={dischargeDate}
+                  onChange={(e) => {
+                    setDischargeDate(e.target.value);
+                    clearFieldError("dischargeDate");
+                  }}
+                  className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.dischargeDate
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.dischargeDate && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.dischargeDate}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
           {
     /* AI Auto-Grouper BPJS (Permenkes No. 3/2023) */
@@ -672,78 +877,241 @@ const NewClaimModal = ({
             )}
           </div>
 
-          {
-    /* INA-CBG & Severity */
-  }
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5 pt-2 border-t border-slate-100">
-            <div className="sm:col-span-3">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Pilih Paket INA-CBG
-              </label>
-              <CustomSelect
-    value={selectedInacbg}
-    onChange={(val) => handleInacbgChange(String(val))}
-    options={inacbgOptions}
-    placeholder="Pilih Paket INA-CBG..."
-  />
-            </div>
+            {/* SELEKSI PAKET INA-CBG: Jika AI telah memetakan, tampilkan konfirmasi paket terpilih secara jelas dan otomatis tanpa dropdown ganda yang membingungkan */}
+            {aiGroupingResult ? (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50/90 to-teal-50/70 border-2 border-emerald-500/40 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-lg bg-[#0E947A] text-white flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-slate-900">
+                          Paket INA-CBG Terpilih Otomatis (Hasil AI)
+                        </span>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Paket Sudah Terkunci
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-600">
+                        Otomatis terisi dari pemetaan Grouper Permenkes No. 3/2023. Anda tidak perlu memilih paket lagi.
+                      </p>
+                    </div>
+                  </div>
 
-            <div className="sm:col-span-2">
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Tingkat Keparahan (Severity)
-              </label>
-              <CustomSelect
-    value={severity}
-    onChange={(val) => setSeverity(Number(val))}
-    options={severityOptions}
-    placeholder="Pilih Severity..."
-  />
-            </div>
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsManualOverrideOpen(!isManualOverrideOpen)}
+                    className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0E947A] border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    <Settings2 className="w-3.5 h-3.5 text-slate-500" />
+                    <span>{isManualOverrideOpen ? "Tutup Override Manual" : "Ubah Paket / Severity Manual"}</span>
+                    {isManualOverrideOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
 
-          {
-    /* Diagnosis & Amount */
-  }
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Kode Diagnosis Primer (ICD-10)
-              </label>
-              <input
-    type="text"
-    value={primaryDxCode}
-    onChange={(e) => setPrimaryDxCode(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs font-mono border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
-            </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">PAKET INA-CBG</span>
+                    <span className="font-mono font-bold text-[#0E947A] text-sm block mt-0.5">{selectedInacbg}</span>
+                    <span className="text-[11px] text-slate-700 font-medium block mt-0.5 line-clamp-2">
+                      {inacbgList.find((c) => c.code === selectedInacbg)?.name || selectedInacbg}
+                    </span>
+                  </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Nama Diagnosis Primer
-              </label>
-              <input
-    type="text"
-    value={primaryDxName}
-    onChange={(e) => setPrimaryDxName(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
-            </div>
+                  <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">TINGKAT KEPARAHAN</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-xs font-bold text-slate-900">Severity {severity}</span>
+                      <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        Tingkat {severity}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-500 block mt-0.5">
+                      {severity === 1 ? "Standar tanpa komplikasi mayor" : severity === 2 ? "Komorbiditas sedang" : "Kasus berat / kritis"}
+                    </span>
+                  </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Tarif Billed Ditagihkan (Rp)
-              </label>
-              <input
-    type="number"
-    value={billedAmount}
-    onChange={(e) => setBilledAmount(Number(e.target.value))}
-    required
-    className="w-full px-3 py-2 text-xs font-mono font-bold border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
+                  <div className="p-3 rounded-xl bg-white border border-emerald-200 shadow-2xs">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase tracking-wider">TARIF STANDAR BPJS</span>
+                    <span className="font-mono font-bold text-slate-900 text-sm block mt-0.5">
+                      Rp {billedAmount.toLocaleString("id-ID")}
+                    </span>
+                    <span className="text-[10px] text-[#0E947A] font-semibold block mt-0.5">
+                      ✓ Tarif Terstandar Ditagihkan
+                    </span>
+                  </div>
+                </div>
+
+                {/* Collapsible Manual Override Dropdowns if user wants to change */}
+                {isManualOverrideOpen && (
+                  <div className="pt-3 border-t border-emerald-200/80 space-y-2">
+                    <p className="text-[11px] text-slate-600 font-medium italic">
+                      Mode Override Manual: Anda dapat mengganti paket atau tingkat keparahan jika diinginkan.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                      <div className="sm:col-span-3">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Ganti Paket INA-CBG
+                        </label>
+                        <CustomSelect
+                          value={selectedInacbg}
+                          onChange={(val) => {
+                            handleInacbgChange(String(val));
+                            clearFieldError("selectedInacbg");
+                          }}
+                          options={inacbgOptions}
+                          placeholder="Pilih Paket INA-CBG..."
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">
+                          Ganti Severity
+                        </label>
+                        <CustomSelect
+                          value={severity}
+                          onChange={(val) => setSeverity(Number(val))}
+                          options={severityOptions}
+                          placeholder="Pilih Severity..."
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Tampilan jika AI Grouper belum dijalankan: Tampilkan pilihan paket manual dengan tanda wajib (*) */
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3.5 pt-2 border-t border-slate-100">
+                <div className="sm:col-span-3">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                    <span>
+                      Pilih Paket INA-CBG <span className="text-rose-500 font-bold">*</span>
+                    </span>
+                    {formErrors.selectedInacbg && (
+                      <span className="text-[10px] text-rose-600 font-bold">Wajib Dipilih</span>
+                    )}
+                  </label>
+                  <CustomSelect
+                    value={selectedInacbg}
+                    onChange={(val) => {
+                      handleInacbgChange(String(val));
+                      clearFieldError("selectedInacbg");
+                    }}
+                    options={inacbgOptions}
+                    placeholder="Pilih Paket INA-CBG..."
+                  />
+                  {formErrors.selectedInacbg && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.selectedInacbg}
+                    </p>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Tingkat Keparahan (Severity) <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  <CustomSelect
+                    value={severity}
+                    onChange={(val) => setSeverity(Number(val))}
+                    options={severityOptions}
+                    placeholder="Pilih Severity..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Diagnosis & Amount */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    Kode Diagnosis Primer (ICD-10) <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.primaryDxCode && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={primaryDxCode}
+                  onChange={(e) => {
+                    setPrimaryDxCode(e.target.value);
+                    clearFieldError("primaryDxCode");
+                  }}
+                  className={`w-full px-3 py-2 text-xs font-mono border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.primaryDxCode
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.primaryDxCode && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.primaryDxCode}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    Nama Diagnosis Primer <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.primaryDxName && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  value={primaryDxName}
+                  onChange={(e) => {
+                    setPrimaryDxName(e.target.value);
+                    clearFieldError("primaryDxName");
+                  }}
+                  className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.primaryDxName
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.primaryDxName && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.primaryDxName}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                  <span>
+                    Tarif Billed Ditagihkan (Rp) <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                  {formErrors.billedAmount && (
+                    <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                  )}
+                </label>
+                <input
+                  type="number"
+                  value={billedAmount}
+                  onChange={(e) => {
+                    setBilledAmount(Number(e.target.value));
+                    clearFieldError("billedAmount");
+                  }}
+                  className={`w-full px-3 py-2 text-xs font-mono font-bold border rounded-xl focus:ring-2 bg-white transition-colors ${
+                    formErrors.billedAmount
+                      ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                      : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  }`}
+                />
+                {formErrors.billedAmount && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.billedAmount}
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
 
           {
     /* Optional Secondary Dx */
@@ -834,63 +1202,96 @@ const NewClaimModal = ({
             )}
           </div>
 
-          {
-    /* Medical Resume Text */
-  }
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 text-emerald-600" />
-              Teks Resume Medis Pasien (Leaf #3)
-            </label>
-            <textarea
-    rows={3}
-    value={resumeText}
-    onChange={(e) => setResumeText(e.target.value)}
-    required
-    className="w-full px-3 py-2 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
-          </div>
-
-          {
-    /* Live Preview of Merkle Sealing */
-  }
-          <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
-              <GitBranch className="w-3.5 h-3.5 text-emerald-600" />
-              Pratinjau Daun Merkle & Segel Kriptografis (Live Hashing)
-            </span>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
-              {tempLeaves.slice(0, 4).map((l, i) => <div key={l.id} className="p-2 rounded-lg bg-white border border-slate-200 truncate">
-                  <span className="font-bold text-slate-700">Daun #{i + 1}:</span>{" "}
-                  <span className="font-mono text-slate-500">{l.hash.slice(0, 24)}...</span>
-                </div>)}
+            {/* Medical Resume Text */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>
+                    Teks Resume Medis Pasien (Bukti Rekam Medis Leaf #3) <span className="text-rose-500 font-bold">*</span>
+                  </span>
+                </span>
+                {formErrors.resumeText && (
+                  <span className="text-[10px] text-rose-600 font-bold">Wajib Diisi</span>
+                )}
+              </label>
+              <textarea
+                rows={3}
+                value={resumeText}
+                onChange={(e) => {
+                  setResumeText(e.target.value);
+                  clearFieldError("resumeText");
+                }}
+                className={`w-full px-3 py-2 text-xs border rounded-xl focus:ring-2 bg-white transition-colors ${
+                  formErrors.resumeText
+                    ? "border-rose-500 bg-rose-50/25 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                    : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                }`}
+              />
+              {formErrors.resumeText && (
+                <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {formErrors.resumeText}
+                </p>
+              )}
             </div>
-            <p className="text-[10px] text-emerald-700 italic font-mono truncate">
-              Menghubungkan ke Prev Seal: {lastSealHash.slice(0, 32)}...
-            </p>
-          </div>
+
+            {/* Live Preview of Merkle Sealing */}
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                <GitBranch className="w-3.5 h-3.5 text-emerald-600" />
+                Pratinjau Daun Merkle & Segel Kriptografis (Live Hashing)
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px]">
+                {tempLeaves.slice(0, 4).map((l, i) => (
+                  <div key={l.id} className="p-2 rounded-lg bg-white border border-slate-200 truncate">
+                    <span className="font-bold text-slate-700">Daun #{i + 1}:</span>{" "}
+                    <span className="font-mono text-slate-500">{l.hash.slice(0, 24)}...</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-emerald-700 italic font-mono truncate">
+                Menghubungkan ke Prev Seal: {lastSealHash.slice(0, 32)}...
+              </p>
+            </div>
           </div>
 
-          {
-    /* Pinned Footer Submit Bar (Always Visible at Bottom of Modal) */
-  }
-          <div className="px-5 sm:px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 flex items-center justify-end gap-3 shrink-0">
-            <button
-    type="button"
-    onClick={onClose}
-    className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
-  >
-              Batal
-            </button>
+          {/* Pinned Footer Submit Bar (Always Visible at Bottom of Modal) */}
+          <div className="px-5 sm:px-6 py-3.5 border-t border-slate-100 bg-slate-50/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+            <div className="text-xs">
+              {hasAttemptedSubmit && Object.keys(formErrors).length > 0 ? (
+                <span className="text-rose-600 font-bold flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>Ada bidang wajib (*) yang belum terisi lengkap</span>
+                </span>
+              ) : (
+                <span className="text-slate-500 text-[11px] flex items-center gap-1">
+                  <span className="text-rose-500 font-bold">*</span> Bidang wajib diisi sebelum klaim dapat disegel
+                </span>
+              )}
+            </div>
 
-            <button
-    type="submit"
-    data-tour="btn-submit-new-claim"
-    className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm shadow-emerald-200 transition-all flex items-center gap-2 cursor-pointer"
-  >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Segel & Kirim Klaim ke Antrian Verifikator</span>
-            </button>
+            <div className="flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-xl cursor-pointer"
+              >
+                Batal
+              </button>
+
+              <button
+                type="submit"
+                data-tour="btn-submit-new-claim"
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md ${
+                  hasAttemptedSubmit && Object.keys(formErrors).length > 0
+                    ? "bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200"
+                    : "bg-[#0E947A] hover:bg-[#0B7A64] text-white shadow-emerald-700/20"
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4" />
+                <span>Segel & Kirim Klaim ke Antrian Verifikator</span>
+              </button>
+            </div>
           </div>
         </form>
       </motion.div>

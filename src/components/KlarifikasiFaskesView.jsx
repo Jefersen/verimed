@@ -22,6 +22,7 @@ const KlarifikasiFaskesView = ({
     clarificationClaims[0]?.id || null
   );
   const [responseAnswer, setResponseAnswer] = useState("");
+  const [responseError, setResponseError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraftingAi, setIsDraftingAi] = useState(false);
   const [aiDraftWarning, setAiDraftWarning] = useState(null);
@@ -31,6 +32,7 @@ const KlarifikasiFaskesView = ({
     if (!activeClaim) return;
     setIsDraftingAi(true);
     setAiDraftWarning(null);
+    setResponseError("");
     const res = await requestAiDraftNote(activeClaim, "faskes");
     setIsDraftingAi(false);
     if (res.success && res.note) {
@@ -43,7 +45,12 @@ const KlarifikasiFaskesView = ({
   };
   const handleSubmitResponse = (e) => {
     e.preventDefault();
-    if (!activeClaim || !responseAnswer.trim()) return;
+    if (!responseAnswer.trim()) {
+      setResponseError("Tanggapan atau penjelasan medis wajib diisi sebelum mengirim revisi berkas.");
+      return;
+    }
+    setResponseError("");
+    if (!activeClaim) return;
     setIsSubmitting(true);
     if (onSubmitRevision) {
       onSubmitRevision(activeClaim.id, responseAnswer);
@@ -187,7 +194,7 @@ const KlarifikasiFaskesView = ({
                 <div>
                   <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
                     <label className="block text-xs font-bold text-slate-700">
-                      Tanggapan / Penjelasan Medis Faskes:
+                      Tanggapan / Penjelasan Medis Faskes: <span className="text-rose-500 font-bold">*</span>
                     </label>
                     <button
                       type="button"
@@ -212,13 +219,25 @@ const KlarifikasiFaskesView = ({
                     </div>
                   )}
                   <textarea
-    rows={4}
-    value={responseAnswer}
-    onChange={(e) => setResponseAnswer(e.target.value)}
-    required
-    placeholder="Contoh: Kami telah meninjau kembali rincian tindakan. Kasa hemostatik digunakan atas indikasi perdarahan fokal intra-operasi. Terlampir penjelasan tambahan pada resume..."
-    className="w-full px-3.5 py-2.5 text-xs border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white"
-  />
+                    rows={4}
+                    value={responseAnswer}
+                    onChange={(e) => {
+                      setResponseAnswer(e.target.value);
+                      if (responseError) setResponseError("");
+                    }}
+                    placeholder="Contoh: Kami telah meninjau kembali rincian tindakan. Kasa hemostatik digunakan atas indikasi perdarahan fokal intra-operasi. Terlampir penjelasan tambahan pada resume..."
+                    className={`w-full px-3.5 py-2.5 text-xs border rounded-xl focus:ring-2 bg-white transition-colors ${
+                      responseError
+                        ? "border-rose-500 bg-rose-50/20 ring-2 ring-rose-500/20 focus:border-rose-600 focus:ring-rose-500/30 text-rose-950"
+                        : "border-slate-200 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    }`}
+                  />
+                  {responseError && (
+                    <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      <span>{responseError}</span>
+                    </p>
+                  )}
                 </div>
 
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">

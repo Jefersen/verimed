@@ -10,7 +10,8 @@ import {
   CheckCircle2,
   X,
   ArrowRight,
-  Compass
+  Compass,
+  RotateCcw
 } from "lucide-react";
 
 const TAB_TITLES = {
@@ -62,6 +63,7 @@ const HeaderBar = ({
   onOpenMobileSidebar,
   onSwitchRole,
   onStartTutorial,
+  onResetDemo,
   unverifiedCount = 0,
   clarificationCount = 0,
   claims = [],
@@ -241,6 +243,20 @@ const HeaderBar = ({
                   <ArrowRightLeft className="w-3.5 h-3.5 text-[#0E947A] group-hover:rotate-180 transition-transform duration-500" />
                   <span>{isAdmin ? "Demo Admin" : "Demo Faskes"}</span>
                 </motion.button>
+
+                {onResetDemo && (
+                  <motion.button
+                    type="button"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={onResetDemo}
+                    className="hidden xl:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-500 text-xs font-semibold transition-colors cursor-pointer"
+                    title="Kembalikan data simulasi demo ke kondisi awal"
+                  >
+                    <RotateCcw className="w-3 h-3 text-slate-400 group-hover:text-rose-600" />
+                    <span>Reset Demo</span>
+                  </motion.button>
+                )}
               </div>
             ) : (
               <div className="hidden sm:flex items-center gap-2">

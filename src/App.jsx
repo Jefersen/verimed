@@ -40,10 +40,46 @@ function App() {
     return INITIAL_USERS[0];
   });
   const [activeTab, setActiveTab] = useState("dashboard");
-  const [claims, setClaims] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_CLAIMS);
-  const [seals, setSeals] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_SEALS);
-  const [labResults, setLabResults] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_LAB_RESULTS);
-  const [auditLogs, setAuditLogs] = useState(() => currentUser?.isDemo === false ? [] : INITIAL_AUDIT_LOGS);
+  const [claims, setClaims] = useState(() => {
+    if (currentUser?.isDemo) {
+      try {
+        const saved = sessionStorage.getItem("verimed_demo_claims");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return INITIAL_CLAIMS;
+    }
+    return [];
+  });
+  const [seals, setSeals] = useState(() => {
+    if (currentUser?.isDemo) {
+      try {
+        const saved = sessionStorage.getItem("verimed_demo_seals");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return INITIAL_SEALS;
+    }
+    return [];
+  });
+  const [labResults, setLabResults] = useState(() => {
+    if (currentUser?.isDemo) {
+      try {
+        const saved = sessionStorage.getItem("verimed_demo_lab_results");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return INITIAL_LAB_RESULTS;
+    }
+    return [];
+  });
+  const [auditLogs, setAuditLogs] = useState(() => {
+    if (currentUser?.isDemo) {
+      try {
+        const saved = sessionStorage.getItem("verimed_demo_audit_logs");
+        if (saved) return JSON.parse(saved);
+      } catch {}
+      return INITIAL_AUDIT_LOGS;
+    }
+    return [];
+  });
   const [selectedClaim, setSelectedClaim] = useState(null);
   const [isNewClaimModalOpen, setIsNewClaimModalOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -57,15 +93,46 @@ function App() {
     }, 3500);
   };
 
+  // Persist demo state changes so they survive role switches and tab refreshes
+  useEffect(() => {
+    if (currentUser?.isDemo && claims && claims.length > 0) {
+      try {
+        sessionStorage.setItem("verimed_demo_claims", JSON.stringify(claims));
+      } catch {}
+    }
+  }, [claims, currentUser?.isDemo]);
+
+  useEffect(() => {
+    if (currentUser?.isDemo && seals && seals.length > 0) {
+      try {
+        sessionStorage.setItem("verimed_demo_seals", JSON.stringify(seals));
+      } catch {}
+    }
+  }, [seals, currentUser?.isDemo]);
+
+  useEffect(() => {
+    if (currentUser?.isDemo && labResults && labResults.length > 0) {
+      try {
+        sessionStorage.setItem("verimed_demo_lab_results", JSON.stringify(labResults));
+      } catch {}
+    }
+  }, [labResults, currentUser?.isDemo]);
+
+  useEffect(() => {
+    if (currentUser?.isDemo && auditLogs && auditLogs.length > 0) {
+      try {
+        sessionStorage.setItem("verimed_demo_audit_logs", JSON.stringify(auditLogs));
+      } catch {}
+    }
+  }, [auditLogs, currentUser?.isDemo]);
+
   // Sync real tenant data across browser tabs and backend database
   useEffect(() => {
     if (!currentUser) return;
 
     if (currentUser.isDemo) {
-      setClaims(INITIAL_CLAIMS);
-      setLabResults(INITIAL_LAB_RESULTS);
-      setSeals(INITIAL_SEALS);
-      setAuditLogs(INITIAL_AUDIT_LOGS);
+      // Demo mode maintains its interactive session in-memory and in sessionStorage.
+      // Do NOT reset to INITIAL_CLAIMS on role switch!
       return;
     }
 
@@ -133,6 +200,21 @@ function App() {
       setActiveTab("dashboard");
       showToast(`Beralih simulasi peran ke: ${switched.name} (${nextRole === "admin" ? "Admin & Verifikator" : "Faskes"})`);
     }
+  };
+
+  const handleResetDemoData = () => {
+    try {
+      sessionStorage.removeItem("verimed_demo_claims");
+      sessionStorage.removeItem("verimed_demo_seals");
+      sessionStorage.removeItem("verimed_demo_lab_results");
+      sessionStorage.removeItem("verimed_demo_audit_logs");
+    } catch {}
+    setClaims(INITIAL_CLAIMS);
+    setSeals(INITIAL_SEALS);
+    setLabResults(INITIAL_LAB_RESULTS);
+    setAuditLogs(INITIAL_AUDIT_LOGS);
+    setSelectedClaim(null);
+    showToast("Data demo berhasil direset ke kondisi awal.");
   };
   const handleUpdateClaimStatus = (claimId, newStatus, note) => {
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
@@ -545,6 +627,7 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
     onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
     onSwitchRole={handleSwitchRole}
     onStartTutorial={() => setIsTutorialOpen(true)}
+    onResetDemo={currentUser?.isDemo ? handleResetDemoData : undefined}
     unverifiedCount={unverifiedCount}
     clarificationCount={clarificationCount}
     claims={claims}
