@@ -493,7 +493,7 @@ const NewClaimModal = ({
       inacbgCode: selectedInacbg,
       inacbgDescription: inacbgMeta ? inacbgMeta.name : "Paket INA-CBG Rawat Inap",
       severity,
-      billedAmount,
+      billedAmount: Number(billedAmount),
       primaryDiagnosis: {
         code: primaryDxCode,
         name: primaryDxName
@@ -1091,8 +1091,22 @@ const NewClaimModal = ({
                   type="number"
                   value={billedAmount}
                   onChange={(e) => {
-                    setBilledAmount(Number(e.target.value));
+                    let val = e.target.value;
+                    if (/^0[0-9]/.test(val)) {
+                      val = val.replace(/^0+(?=\d)/, "");
+                    }
+                    setBilledAmount(val);
                     clearFieldError("billedAmount");
+                  }}
+                  onFocus={() => {
+                    if (billedAmount === 0 || billedAmount === "0") {
+                      setBilledAmount("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (billedAmount === "" || isNaN(Number(billedAmount))) {
+                      setBilledAmount(0);
+                    }
                   }}
                   className={`w-full px-3 py-2 text-xs font-mono font-bold border rounded-xl focus:ring-2 bg-white transition-colors ${
                     formErrors.billedAmount

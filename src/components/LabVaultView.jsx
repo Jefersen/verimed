@@ -233,7 +233,8 @@ const LabVaultView = ({
     COMMON_TESTS.find((t) => t.name === selectedTest) ||
     availableTestsForDevice[0] ||
     COMMON_TESTS[0];
-  const isAbnormal = testValue < testConfig.normalMin || testValue > testConfig.normalMax;
+  const numVal = parseFloat(testValue) || 0;
+  const isAbnormal = numVal < testConfig.normalMin || numVal > testConfig.normalMax;
 
   const handleDeviceChange = (newDeviceName) => {
     const devStr = String(newDeviceName);
@@ -306,7 +307,7 @@ const LabVaultView = ({
     if (!selectedTest) {
       errs.selectedTest = "Parameter uji wajib dipilih.";
     }
-    if (testValue === undefined || testValue === null || isNaN(Number(testValue))) {
+    if (testValue === undefined || testValue === null || testValue === "" || isNaN(Number(testValue))) {
       errs.testValue = "Nilai hasil pemeriksaan wajib diisi.";
     }
     if (Object.keys(errs).length > 0) {
@@ -328,7 +329,7 @@ const LabVaultView = ({
       encounterId,
       patientPseudoId,
       test: selectedTest,
-      value: testValue,
+      value: Number(testValue),
       unit: testConfig.unit,
       referenceRange: `${testConfig.normalMin} - ${testConfig.normalMax}`,
       isAbnormal,
@@ -737,8 +738,22 @@ const LabVaultView = ({
                         step="any"
                         value={testValue}
                         onChange={(e) => {
-                          setTestValue(parseFloat(e.target.value) || 0);
+                          let val = e.target.value;
+                          if (/^0[0-9]/.test(val)) {
+                            val = val.replace(/^0+(?=\d)/, "");
+                          }
+                          setTestValue(val);
                           clearLabError("testValue");
+                        }}
+                        onFocus={() => {
+                          if (testValue === 0 || testValue === "0") {
+                            setTestValue("");
+                          }
+                        }}
+                        onBlur={() => {
+                          if (testValue === "" || isNaN(Number(testValue))) {
+                            setTestValue(0);
+                          }
                         }}
                         className={`w-full px-3 py-2 text-xs font-mono font-bold border rounded-xl bg-white focus:ring-2 transition-colors ${
                           labErrors.testValue
