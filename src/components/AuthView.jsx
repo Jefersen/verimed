@@ -536,22 +536,20 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                 <button
                   type="button"
                   onClick={() => setIsRegister(false)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    !isRegister
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${!isRegister
                       ? "bg-white text-slate-900 shadow-2xs"
                       : "text-slate-500 hover:text-slate-800"
-                  }`}
+                    }`}
                 >
                   Masuk
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsRegister(true)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    isRegister
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${isRegister
                       ? "bg-white text-slate-900 shadow-2xs"
                       : "text-slate-500 hover:text-slate-800"
-                  }`}
+                    }`}
                 >
                   Daftar
                 </button>
@@ -561,11 +559,10 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                 <button
                   type="button"
                   onClick={() => setSelectedRole("admin")}
-                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                    selectedRole === "admin"
+                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${selectedRole === "admin"
                       ? "bg-[#D6F2EE] text-[#0E947A]"
                       : "text-slate-400 hover:text-slate-700"
-                  }`}
+                    }`}
                 >
                   <UserCheck className="w-3.5 h-3.5" />
                   <span>Admin</span>
@@ -573,11 +570,10 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                 <button
                   type="button"
                   onClick={() => setSelectedRole("faskes")}
-                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                    selectedRole === "faskes"
+                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${selectedRole === "faskes"
                       ? "bg-[#D6F2EE] text-[#0E947A]"
                       : "text-slate-400 hover:text-slate-700"
-                  }`}
+                    }`}
                 >
                   <Building2 className="w-3.5 h-3.5" />
                   <span>Faskes</span>
@@ -711,9 +707,8 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                 disabled={isSubmitting}
                 whileHover={{ scale: isSubmitting ? 1 : 1.01, y: isSubmitting ? 0 : -1 }}
                 whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
-                className={`w-full py-3.5 px-6 rounded-2xl bg-[#0E947A] hover:bg-[#0B7A64] text-white font-bold text-sm shadow-lg shadow-[#0E947A]/25 transition-all cursor-pointer ${
-                  isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-                }`}
+                className={`w-full py-3.5 px-6 rounded-2xl bg-[#0E947A] hover:bg-[#0B7A64] text-white font-bold text-sm shadow-lg shadow-[#0E947A]/25 transition-all cursor-pointer ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+                  }`}
               >
                 {isSubmitting ? "Memproses..." : isRegister ? "Daftar & Masuk" : "Login"}
               </motion.button>

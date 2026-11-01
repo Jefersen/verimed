@@ -11,7 +11,7 @@ import {
   INITIAL_AUDIT_LOGS
 } from "./data/mockData";
 import { evaluateClaimRules } from "./utils/rules";
-import { buildClaimLeaves, generateMerkleRoot, sha256Sync } from "./utils/crypto";
+import { buildClaimLeaves, createSeal, generateMerkleRoot, sha256Sync } from "./utils/crypto";
 import { Sidebar } from "./components/Sidebar";
 import { HeaderBar } from "./components/HeaderBar";
 import { AuthView } from "./components/AuthView";
@@ -395,20 +395,14 @@ Catatan Tambahan: ${additionalNotes}` : ""}`,
       labRefs: targetClaim.labRefs,
       version: nextVersion
     });
-    const newMerkleRoot = generateMerkleRoot(updatedLeaves);
-    const newSealHash = sha256Sync(`${newMerkleRoot}|${targetClaim.seal.sealHash}|${nowIso}`);
-    const newSeal = {
-      id: `SEAL-${claimId}-V${nextVersion}`,
-      claimId,
-      claimNumber: targetClaim.claimNumber,
-      merkleRoot: newMerkleRoot,
-      prevSealHash: targetClaim.seal.sealHash,
-      sealHash: newSealHash,
-      signature: `ed25519_sig_${newSealHash.slice(0, 32)}`,
-      keyId: "faskes-ed25519-prod-2026",
-      createdAt: nowIso,
-      leaves: updatedLeaves
-    };
+    const newSeal = createSeal({
+      kind: "claim",
+      refId: targetClaim.claimNumber || claimId,
+      version: nextVersion,
+      leaves: updatedLeaves,
+      prevSealHash: targetClaim.seal?.sealHash || "0".repeat(64),
+      createdAt: nowIso
+    });
     const updatedClaim = {
       ...targetClaim,
       currentVersion: nextVersion,

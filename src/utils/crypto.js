@@ -184,22 +184,23 @@ function generateMerkleRoot(leaves) {
 function buildClaimLeaves(claimData) {
   const leaves = [];
   const structuredData = {
-    admitDate: claimData.admitDate,
-    dischargeDate: claimData.dischargeDate,
-    encounterId: claimData.encounterId,
-    inacbgCode: claimData.inacbgCode,
-    patientPseudoId: claimData.patientPseudoId,
-    severity: claimData.severity,
-    billedAmount: claimData.billedAmount
+    admitDate: claimData.admitDate || "",
+    dischargeDate: claimData.dischargeDate || "",
+    encounterId: claimData.encounterId || "",
+    inacbgCode: claimData.inacbgCode || "",
+    patientPseudoId: claimData.patientPseudoId || "",
+    severity: Number(claimData.severity) || 1,
+    billedAmount: Number(claimData.billedAmount) || 0
   };
   const structuredCanonical = canonicalizeJson(structuredData);
   leaves.push({
     id: "leaf-structured",
     label: "Data Terstruktur Klaim (INA-CBG, Severity, Pasien)",
     hash: hashLeaf(structuredCanonical),
-    dataSnippet: `${claimData.inacbgCode} | Sev ${claimData.severity} | Rp ${claimData.billedAmount.toLocaleString("id-ID")}`
+    dataSnippet: `${structuredData.inacbgCode} | Sev ${structuredData.severity} | Rp ${structuredData.billedAmount.toLocaleString("id-ID")}`
   });
-  const sortedItems = [...claimData.items].sort((a, b) => a.code.localeCompare(b.code));
+  const rawItems = Array.isArray(claimData.items) ? claimData.items : [];
+  const sortedItems = [...rawItems].sort((a, b) => (a.code || "").localeCompare(b.code || ""));
   const itemsCanonical = canonicalizeJson(sortedItems);
   leaves.push({
     id: "leaf-items",
@@ -207,30 +208,32 @@ function buildClaimLeaves(claimData) {
     hash: hashLeaf(itemsCanonical),
     dataSnippet: sortedItems.map((it) => `${it.code}: ${it.amount}`).join("; ")
   });
-  const resumeCanonical = canonicalizeJson({ text: claimData.resumeText.trim() });
+  const resumeText = typeof claimData.resumeText === "string" ? claimData.resumeText : "";
+  const resumeCanonical = canonicalizeJson({ text: resumeText.trim() });
   leaves.push({
     id: "leaf-resume",
     label: "Berkas Resume Medis Klinis (SHA-256 Dokumen)",
     hash: hashLeaf(resumeCanonical),
-    dataSnippet: claimData.resumeText.slice(0, 70) + "..."
+    dataSnippet: resumeText.slice(0, 70) + (resumeText.length > 70 ? "..." : "")
   });
-  const sortedLabRefs = [...claimData.labRefs].sort((a, b) => a.labResultId.localeCompare(b.labResultId));
+  const rawLabRefs = Array.isArray(claimData.labRefs) ? claimData.labRefs : [];
+  const sortedLabRefs = [...rawLabRefs].sort((a, b) => (a.labResultId || "").localeCompare(b.labResultId || ""));
   const labRefsCanonical = canonicalizeJson(sortedLabRefs);
   leaves.push({
     id: "leaf-lab",
     label: `Rujukan Hasil Lab Vault (${sortedLabRefs.length} ref)`,
     hash: hashLeaf(labRefsCanonical),
-    dataSnippet: sortedLabRefs.map((r) => `${r.labResultId}#${r.labSealHash.slice(0, 8)}`).join(", ") || "N/A"
+    dataSnippet: sortedLabRefs.map((r) => `${r.labResultId}#${(r.labSealHash || "").slice(0, 8)}`).join(", ") || "N/A"
   });
   const metaCanonical = canonicalizeJson({
-    version: claimData.version,
+    version: Number(claimData.version) || 1,
     schema: "FKRTL-INA-CBG-v2"
   });
   leaves.push({
     id: "leaf-meta",
     label: "Metadata Versi & Skema VeriMed",
     hash: hashLeaf(metaCanonical),
-    dataSnippet: `Versi ${claimData.version} (FKRTL)`
+    dataSnippet: `Versi ${Number(claimData.version) || 1} (FKRTL)`
   });
   return leaves;
 }
@@ -257,7 +260,15 @@ function createSeal(params) {
   };
 }
 function verifySealLeaves(originalSeal, candidateLeaves) {
-  const candidateHashes = candidateLeaves.map((l) => l.hash);
+  if (!originalSeal || !Array.isArray(originalSeal.leaves)) {
+    return {
+      isValid: false,
+      tamperedLeaves: [{ label: "Segel Digital", originalHash: "MISSING", recalculatedHash: "N/A" }],
+      calculatedMerkleRoot: "",
+      expectedMerkleRoot: ""
+    };
+  }
+  const candidateHashes = (candidateLeaves || []).map((l) => l.hash);
   const calculatedMerkleRoot = computeMerkleRoot(candidateHashes);
   const expectedMerkleRoot = originalSeal.merkleRoot;
   const tamperedLeaves = [];

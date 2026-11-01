@@ -314,6 +314,13 @@ const NewClaimModal = ({
     value: labRef.value,
     unit: labRef.unit
   }));
+  const claimItems = [
+    {
+      code: "PAKET-INA",
+      description: `Tarif Paket ${selectedInacbg} (Severity ${severity})`,
+      amount: billedAmount
+    }
+  ];
   const tempLeaves = buildClaimLeaves({
     encounterId,
     patientPseudoId,
@@ -322,7 +329,7 @@ const NewClaimModal = ({
     inacbgCode: selectedInacbg,
     severity,
     billedAmount,
-    items: [{ code: "PAKET-INA", description: `Tarif Paket ${selectedInacbg}`, amount: billedAmount }],
+    items: claimItems,
     resumeText,
     labRefs,
     version: 1
@@ -366,13 +373,7 @@ const NewClaimModal = ({
       secondaryDiagnoses: secDx,
       procedures: [],
       specialItems: [],
-      items: [
-        {
-          code: "PAKET-INA",
-          description: `Tarif Paket ${selectedInacbg} (Severity ${severity})`,
-          amount: billedAmount
-        }
-      ],
+      items: claimItems,
       resumeText,
       currentVersion: 1,
       status: "menunggu_verifikasi",
