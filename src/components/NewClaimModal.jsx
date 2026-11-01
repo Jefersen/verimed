@@ -628,16 +628,11 @@ const NewClaimModal = ({
           <div className="p-4 sm:p-6 overflow-y-auto flex-1 min-h-0 space-y-4">
             {/* Top Error Alert Banner if validation failed */}
             {hasAttemptedSubmit && Object.keys(formErrors).length > 0 && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-xs text-rose-900 flex items-start gap-3 shadow-xs">
-                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="font-bold text-rose-950">
-                    Pengajuan Belum Lengkap: Ada Bidang Wajib (*) yang Belum Diisi
-                  </p>
-                  <p className="text-[11px] text-rose-800 leading-relaxed">
-                    Mohon lengkapi seluruh kolom bertanda bintang merah <span className="text-rose-600 font-bold">(*)</span> dan bergaris merah di bawah sebelum klaim dapat disegel kriptografis.
-                  </p>
-                </div>
+              <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <p className="font-semibold text-rose-950">
+                  Mohon lengkapi seluruh kolom wajib bertanda bintang (*) merah.
+                </p>
               </div>
             )}
 
@@ -888,14 +883,14 @@ const NewClaimModal = ({
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-bold text-slate-900">
-                          Paket INA-CBG Terpilih Otomatis (Hasil AI)
+                          Paket INA-CBG Terpilih
                         </span>
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          Paket Sudah Terkunci
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          Otomatis AI
                         </span>
                       </div>
-                      <p className="text-[11px] text-slate-600">
-                        Otomatis terisi dari pemetaan Grouper Permenkes No. 3/2023. Anda tidak perlu memilih paket lagi.
+                      <p className="text-[11px] text-slate-500">
+                        Sesuai standar tarif Permenkes No. 3/2023.
                       </p>
                     </div>
                   </div>
@@ -906,7 +901,7 @@ const NewClaimModal = ({
                     className="px-2.5 py-1 rounded-lg bg-white hover:bg-emerald-50 text-slate-700 hover:text-[#0E947A] border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Settings2 className="w-3.5 h-3.5 text-slate-500" />
-                    <span>{isManualOverrideOpen ? "Tutup Override Manual" : "Ubah Paket / Severity Manual"}</span>
+                    <span>{isManualOverrideOpen ? "Tutup" : "Ubah Manual"}</span>
                     {isManualOverrideOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
                 </div>

@@ -487,7 +487,7 @@ const DashboardAdminView = ({
                     : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                 }`}
               >
-                Waktu Terbaru (Default)
+                Terbaru
               </button>
               <button
                 type="button"

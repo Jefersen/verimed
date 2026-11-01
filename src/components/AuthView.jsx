@@ -670,17 +670,11 @@ const AuthView = ({ onLoginSuccess, demoUsers }) => {
                   </span>
                 </div>
                 {isRegister ? (
-                  <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[10px] text-slate-600 leading-relaxed space-y-1">
-                    <p className="font-bold text-[#0E947A] flex items-center gap-1">
-                      <Sparkles className="w-3 h-3 shrink-0" />
-                      <span>{selectedRole === "admin" ? "Ruang Kerja Cabang Terisolasi" : "Koneksi ke Admin atau Mandiri"}</span>
-                    </p>
-                    <p>
-                      {selectedRole === "admin"
-                        ? "Kode ini adalah identitas kantor cabang Anda. Berikan kode ini ke Faskes mitra agar klaim mereka masuk ke antrean Anda."
-                        : "Ketik kode yang SAMA dengan Admin BPJS Anda jika ingin klaim Anda masuk ke antrean verifikator tersebut. Jika ingin akun mandiri/terpisah, gunakan kode acak di atas."}
-                    </p>
-                  </div>
+                  <p className="text-[10px] text-slate-500 px-1">
+                    {selectedRole === "admin"
+                      ? "Kode kantor cabang untuk menghubungkan faskes mitra."
+                      : "Samakan kode dengan kantor cabang BPJS mitra Anda, atau klik Buat Kode Baru jika mandiri."}
+                  </p>
                 ) : (
                   <p className="text-[10px] text-slate-400 px-1 font-medium">
                     {selectedRole === "admin"

@@ -44,12 +44,12 @@ const ClaimsListView = ({
   ).length;
 
   const sortOptions = [
-    { value: "newest", label: "Waktu Terbaru (Terakhir Diajukan)" },
-    { value: "oldest", label: "Waktu Terlama (Terawal)" },
-    { value: "highest_billed", label: "Tarif Tertinggi (Rp)" },
-    { value: "lowest_billed", label: "Tarif Terendah (Rp)" },
-    { value: "highest_risk", label: "Tingkat Risiko Tertinggi" },
-    { value: "longest_los", label: "Lama Rawat (LOS) Terpanjang" }
+    { value: "newest", label: "Waktu Terbaru" },
+    { value: "oldest", label: "Waktu Terlama" },
+    { value: "highest_billed", label: "Tarif Tertinggi" },
+    { value: "lowest_billed", label: "Tarif Terendah" },
+    { value: "highest_risk", label: "Risiko Tertinggi" },
+    { value: "longest_los", label: "Lama Rawat Terpanjang" }
   ];
 
   const scopedClaims = isAdmin ? claims.filter((claim) => {
