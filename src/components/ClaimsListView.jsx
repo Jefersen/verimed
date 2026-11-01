@@ -266,6 +266,12 @@ const ClaimsListView = ({
         label: "Disetujui",
         badge: "Lolos",
         badgeColor: "bg-emerald-100 text-emerald-800"
+      },
+      {
+        value: "ditolak",
+        label: "Ditolak",
+        badge: "Tolak",
+        badgeColor: "bg-rose-100 text-rose-800"
       }
     ]}
     placeholder="Status Telaah..."
@@ -360,7 +366,9 @@ const ClaimsListView = ({
                 // Exactly 1 single primary indicator badge per row (No rainbow clutter!)
                 const singleStatusBadge = claim.isTampered
                   ? { label: "Segel Tidak Cocok", cls: "bg-rose-50 text-rose-700 border-rose-200" }
-                  : claim.status === "klarifikasi"
+                  : claim.status === "ditolak"
+                    ? { label: "Ditolak", cls: "bg-rose-50 text-rose-700 border-rose-200" }
+                    : claim.status === "klarifikasi"
                     ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
                     : claim.status === "disetujui"
                       ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }

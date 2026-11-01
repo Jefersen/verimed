@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useLayoutEffect } from "react";
 import {
   X,
+  XCircle,
   ShieldCheck,
   ShieldAlert,
   CheckCircle2,
@@ -298,7 +299,9 @@ const ClaimDetailModal = ({
               {(() => {
                 const singleBadge = claim.isTampered
                   ? { label: "Segel Tidak Cocok", cls: "bg-rose-50 text-rose-700 border-rose-200" }
-                  : claim.status === "klarifikasi"
+                  : claim.status === "ditolak"
+                    ? { label: "Ditolak", cls: "bg-rose-50 text-rose-700 border-rose-200" }
+                    : claim.status === "klarifikasi"
                     ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
                     : claim.status === "disetujui"
                       ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
@@ -1295,26 +1298,35 @@ const ClaimDetailModal = ({
 
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button
-    type="button"
-    onClick={() => handleAction("klarifikasi")}
-    className="px-3.5 py-2 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 font-semibold text-xs transition-colors"
-  >
+                type="button"
+                onClick={() => handleAction("ditolak")}
+                className="px-3.5 py-2 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 font-semibold text-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <XCircle className="w-3.5 h-3.5 text-rose-600" />
+                <span>Tolak Klaim</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleAction("klarifikasi")}
+                className="px-3.5 py-2 rounded-xl bg-blue-50 text-blue-800 border border-blue-200 hover:bg-blue-100 font-semibold text-xs transition-colors cursor-pointer"
+              >
                 Minta Klarifikasi
               </button>
 
               <button
-    type="button"
-    onClick={() => handleAction("ditelaah")}
-    className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-semibold text-xs transition-colors"
-  >
+                type="button"
+                onClick={() => handleAction("ditelaah")}
+                className="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 font-semibold text-xs transition-colors cursor-pointer"
+              >
                 Tandai Telaah
               </button>
 
               <button
-    type="button"
-    onClick={() => handleAction("disetujui")}
-    className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
-  >
+                type="button"
+                onClick={() => handleAction("disetujui")}
+                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Setujui Klaim</span>
               </button>

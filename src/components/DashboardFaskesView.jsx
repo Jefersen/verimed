@@ -483,7 +483,9 @@ const DashboardFaskesView = ({
             ) : (
               recentClaims.map((claim, idx) => {
               // Exactly 1 single primary indicator badge per record
-              const singleStatusBadge = claim.status === "disetujui"
+              const singleStatusBadge = claim.status === "ditolak"
+                ? { label: "Ditolak", cls: "bg-rose-50 text-rose-700 border-rose-200" }
+                : claim.status === "disetujui"
                 ? { label: "Disetujui", cls: "bg-emerald-50 text-[#0E947A] border-emerald-200" }
                 : claim.status === "klarifikasi"
                   ? { label: "Klarifikasi", cls: "bg-amber-50 text-amber-800 border-amber-200" }
